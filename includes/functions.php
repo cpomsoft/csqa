@@ -89,6 +89,35 @@ function csqa_mode_labels(array $manifest): array
     return $labels;
 }
 
+/** Days after acquisition before input products are available */
+function csqa_data_latency_days(array $manifest): float
+{
+    return (float)($manifest['data_latency_days'] ?? 35);
+}
+
+/** Start time (unix) of a cycle */
+function csqa_cycle_start_time(array $manifest, int $cycle): int
+{
+    $mission_start = strtotime($manifest['mission_start_date'] . 'T00:00:00Z');
+    return $mission_start + ($cycle - 1) * (int)$manifest['cycle_length_days'] * 86400;
+}
+
+/** Cycle containing a time (unix), or 0 before the start of cycle 1 */
+function csqa_cycle_of_time(array $manifest, int $time): int
+{
+    $mission_start = strtotime($manifest['mission_start_date'] . 'T00:00:00Z');
+    if ($time < $mission_start) {
+        return 0;
+    }
+    return intdiv($time - $mission_start, (int)$manifest['cycle_length_days'] * 86400) + 1;
+}
+
+/** Latest cycle that can have data: the cycle containing (now - data latency) */
+function csqa_latest_available_cycle(array $manifest): int
+{
+    return max(1, csqa_cycle_of_time($manifest, time() - (int)round(csqa_data_latency_days($manifest) * 86400)));
+}
+
 /** Cycles of a baseline for which a parameter has been processed (ascending) */
 function csqa_param_cycles(array $baseline, string $param_id): array
 {

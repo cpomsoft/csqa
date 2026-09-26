@@ -63,9 +63,13 @@ Alias /qa2 /var/www/csqa
 On the production server (from `cpom_software2/src/cpom/altimetry/projects/csqa`):
 
 ```bash
-# routine update, ie daily from cron: reprocess the latest cycles whose input files changed
-python process_cycles.py --latest 3 --update --workers 3
+# routine update, ie daily from cron: reprocess the latest 3 cycles that can have data
+# (ending with the cycle containing today - 35 days) whose input files changed
+python process_cycles.py --latest 3 --update --workers 64
 
 # full mission (re)processing
-python process_cycles.py --all --workers 8
+python process_cycles.py --all --workers 128
 ```
+
+`--workers` is the total number of processes, shared between cycles processed in parallel and
+the plot workers rendering each cycle's maps in parallel.

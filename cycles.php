@@ -51,7 +51,9 @@ require __DIR__ . '/includes/header.php';
     cycle 1 starting at 00:00 UTC on the start of the operational phase. The table lists every cycle,
     the input products found for each product baseline, and the number of days of the cycle they
     cover. Cycles covering less than <?= (int)round(100 * CSQA_PARTIAL_COVERAGE_FRACTION) ?>% of
-    their 30 days are marked as partial.
+    their 30 days are marked as partial. Cycles are listed up to the latest that can have data,
+    as input products become available about
+    <?= $manifest ? h(round(csqa_data_latency_days($manifest))) : 35 ?> days after acquisition.
 </p>
 
 <?php if (!$manifest): ?>
@@ -59,12 +61,14 @@ require __DIR__ . '/includes/header.php';
 <?php else:
     $cycle_length = (int)$manifest['cycle_length_days'];
     $mission_start = strtotime($manifest['mission_start_date'] . 'T00:00:00Z');
-    $current_cycle = intdiv(time() - $mission_start, $cycle_length * 86400) + 1;
     $baselines = $manifest['baselines'];
     $by_baseline = [];
+    // list cycles up to the latest that can have data (or the latest processed, if later)
+    $last_cycle = csqa_latest_available_cycle($manifest);
     foreach ($baselines as $b) {
         foreach ($b['cycles'] as $c) {
             $by_baseline[$b['id']][(int)$c['cycle']] = $c;
+            $last_cycle = max($last_cycle, (int)$c['cycle']);
         }
     }
     $first_param = $manifest['parameters'][0]['id'] ?? '';
@@ -99,7 +103,7 @@ require __DIR__ . '/includes/header.php';
     </tr>
     </thead>
     <tbody>
-    <?php for ($cn = $current_cycle; $cn >= 1; $cn--):
+    <?php for ($cn = $last_cycle; $cn >= 1; $cn--):
         $start = $mission_start + ($cn - 1) * $cycle_length * 86400;
     ?>
         <tr id="cycle-<?= $cn ?>">

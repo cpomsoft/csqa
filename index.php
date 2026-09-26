@@ -27,18 +27,20 @@ $manifest = csqa_manifest();
 <?php else:
     $cycle_length = (int)$manifest['cycle_length_days'];
     $mission_start = strtotime($manifest['mission_start_date'] . 'T00:00:00Z');
-    $today_cycle = intdiv(time() - $mission_start, $cycle_length * 86400) + 1;
-    $today_cycle_start = $mission_start + ($today_cycle - 1) * $cycle_length * 86400;
+    $today_cycle = csqa_cycle_of_time($manifest, time());
+    $latency_days = csqa_data_latency_days($manifest);
+    $latest_cycle = csqa_latest_available_cycle($manifest);
+    $latest_cycle_start = csqa_cycle_start_time($manifest, $latest_cycle);
     $area_names = csqa_area_names($manifest);
 ?>
 
 <p class="csqa-muted">
     <i class="fa-regular fa-calendar"></i>
-    Today (<?= gmdate('d-M-Y') ?>) is in cycle <?= $today_cycle ?>
-    (<?= gmdate('d-M-Y', $today_cycle_start) ?> to
-    <?= gmdate('d-M-Y', $today_cycle_start + $cycle_length * 86400 - 1) ?>).
-    GDR products are processed by ESA about 30 days after acquisition, so the latest cycles are
-    completed as products become available.
+    Today (<?= gmdate('d-M-Y') ?>) is in cycle <?= $today_cycle ?>. GDR-A products become
+    available about <?= h(round($latency_days)) ?> days after acquisition, so the latest cycle that
+    can have data is cycle <?= $latest_cycle ?> (<?= gmdate('d-M-Y', $latest_cycle_start) ?> to
+    <?= gmdate('d-M-Y', $latest_cycle_start + $cycle_length * 86400 - 1) ?>), which is completed as
+    further products become available.
 </p>
 
 <h2>Latest Processed Cycles</h2>

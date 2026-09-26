@@ -45,7 +45,9 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
     See the <a href="cycles.php">list of cycles</a>.
 </p>
 <p class="csqa-lead">
-    GDR products are processed about 30 days after acquisition, so recent cycles are first processed
+    GDR-A products become available about
+    <?= $manifest ? h(round(csqa_data_latency_days($manifest))) : 35 ?> days after acquisition,
+    so recent cycles are first processed
     with partial data and reprocessed as further products become available. The coverage of each
     cycle (the number of its days covered by the input products) is shown with the results, and
     cycles covering less than <?= (int)round(100 * CSQA_PARTIAL_COVERAGE_FRACTION) ?>% of their

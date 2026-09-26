@@ -1,0 +1,429 @@
+/* CryoSat-2 Performance Monitoring (CSQA) portal */
+
+:root {
+    --csqa-navy: #00396d;       /* banner colour */
+    --csqa-heading: #1a3a6b;
+    --csqa-table-head: #1b3f73;
+    --csqa-page-bg: #e9edf2;
+    --csqa-menu-bg: #f3f5f8;
+    --csqa-border: #d5dbe3;
+    --csqa-muted: #5f6b7a;
+    --csqa-accent: #2a6fb5;
+}
+
+body {
+    background: var(--csqa-page-bg);
+    color: #1f2933;
+    font-size: 0.95rem;
+}
+
+.csqa-page {
+    max-width: 1440px;
+    margin: 0 auto;
+    background: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- banner ---------------------------------------------------------------------------- */
+.csqa-banner {
+    background: var(--csqa-navy);
+    line-height: 0;
+}
+
+.csqa-banner img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ---- breadcrumb bar -------------------------------------------------------------------- */
+.csqa-crumbs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 1rem;
+    background: #e4e8ee;
+    border-bottom: 1px solid var(--csqa-border);
+    font-size: 0.875rem;
+}
+
+.csqa-crumbs a {
+    color: var(--csqa-heading);
+}
+
+.csqa-crumbs .sep {
+    margin: 0 0.4rem;
+    color: var(--csqa-muted);
+}
+
+/* ---- layout ---------------------------------------------------------------------------- */
+.csqa-body {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+}
+
+.csqa-main {
+    flex: 1;
+    min-width: 0;
+    padding: 1.25rem 1.5rem 2rem;
+}
+
+/* ---- left menu ------------------------------------------------------------------------- */
+@media (min-width: 992px) {
+    .csqa-menu {
+        width: 215px;
+        flex-shrink: 0;
+        background: var(--csqa-menu-bg);
+        border-right: 1px solid var(--csqa-border);
+        padding: 0.75rem 0;
+    }
+}
+
+.csqa-menu .offcanvas-body {
+    display: flex;
+}
+
+.csqa-menu-header {
+    margin: 1rem 1rem 0.35rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--csqa-border);
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--csqa-heading);
+}
+
+.csqa-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 1rem;
+    color: #22303f;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    font-size: 0.9rem;
+}
+
+.csqa-menu-item i {
+    color: var(--csqa-accent);
+    width: 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.csqa-menu-item:hover {
+    background: #e6ebf2;
+    color: var(--csqa-heading);
+}
+
+.csqa-menu-item.active {
+    font-weight: 700;
+    color: var(--csqa-heading);
+    border-left-color: var(--csqa-navy);
+    background: #e3e9f1;
+}
+
+.csqa-esa {
+    display: block;
+    margin: 1.5rem auto 0.5rem;
+    max-width: 140px;
+    height: auto;
+}
+
+/* ---- headings and text ----------------------------------------------------------------- */
+.csqa-main h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--csqa-heading);
+    margin-bottom: 0.25rem;
+}
+
+.csqa-main h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--csqa-heading);
+    margin: 1.75rem 0 0.75rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--csqa-border);
+}
+
+.csqa-main h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--csqa-heading);
+}
+
+.csqa-lead {
+    color: #3b4754;
+    max-width: 62rem;
+}
+
+.csqa-muted {
+    color: var(--csqa-muted);
+}
+
+.csqa-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--csqa-navy);
+    color: #dce6f2;
+    font-size: 0.8rem;
+}
+
+.csqa-footer a {
+    color: #fff;
+}
+
+/* ---- selection controls ---------------------------------------------------------------- */
+.csqa-controls {
+    background: #f6f8fb;
+    border: 1px solid var(--csqa-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    align-items: flex-end;
+}
+
+.csqa-controls .form-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--csqa-muted);
+    margin-bottom: 0.2rem;
+    display: block;
+}
+
+.csqa-controls .form-select {
+    min-width: 5rem;
+}
+
+.csqa-cycle-select {
+    min-width: 17rem;
+}
+
+.btn-check:checked + .btn-outline-csqa,
+.btn-outline-csqa.active {
+    background: var(--csqa-navy);
+    border-color: var(--csqa-navy);
+    color: #fff;
+}
+
+.btn-outline-csqa {
+    border-color: #9fb0c6;
+    color: var(--csqa-heading);
+    background: #fff;
+}
+
+.btn-outline-csqa:hover {
+    background: #e3e9f1;
+    color: var(--csqa-heading);
+}
+
+.csqa-cycle-info {
+    margin: 0.75rem 0 0;
+    font-size: 0.9rem;
+    color: #3b4754;
+}
+
+/* ---- plots ----------------------------------------------------------------------------- */
+.csqa-plot-card {
+    border: 1px solid var(--csqa-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #fff;
+    height: 100%;
+}
+
+.csqa-plot-card .card-header {
+    background: #f1f4f8;
+    font-weight: 700;
+    color: var(--csqa-heading);
+    font-size: 0.9rem;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.csqa-plot-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: zoom-in;
+}
+
+.csqa-plot-single img {
+    max-width: 1020px;
+}
+
+.csqa-no-data {
+    aspect-ratio: 1020 / 850;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: repeating-linear-gradient(45deg, #f6f8fb, #f6f8fb 10px, #eef2f7 10px, #eef2f7 20px);
+    color: var(--csqa-muted);
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+}
+
+.csqa-modal-img {
+    width: 100%;
+    height: auto;
+}
+
+/* ---- tables ---------------------------------------------------------------------------- */
+.csqa-table {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.csqa-table thead th {
+    background: var(--csqa-table-head);
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.csqa-table td.num,
+.csqa-table th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.csqa-table tr.selected td {
+    background: #eaf1fa;
+}
+
+.csqa-swatch {
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+    margin-right: 0.3rem;
+    vertical-align: -0.05rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.csqa-thumb {
+    width: 150px;
+    height: auto;
+    border: 1px solid var(--csqa-border);
+    border-radius: 3px;
+}
+
+.csqa-thumb-empty {
+    display: inline-block;
+    width: 150px;
+    color: var(--csqa-muted);
+    font-size: 0.8rem;
+}
+
+/* ---- trends ---------------------------------------------------------------------------- */
+.csqa-trend {
+    width: 100%;
+    min-height: 480px;
+}
+
+.csqa-trend-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* ---- overview cards -------------------------------------------------------------------- */
+.csqa-param-card {
+    border: 1px solid var(--csqa-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s;
+}
+
+.csqa-param-card:hover {
+    box-shadow: 0 4px 14px rgba(0, 57, 109, 0.18);
+    color: inherit;
+}
+
+.csqa-param-card img {
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid var(--csqa-border);
+}
+
+.csqa-param-card .body {
+    padding: 0.6rem 0.8rem;
+}
+
+.csqa-param-card .title {
+    font-weight: 700;
+    color: var(--csqa-heading);
+}
+
+.csqa-stat-tile {
+    border: 1px solid var(--csqa-border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    height: 100%;
+    background: #f9fafc;
+}
+
+.csqa-stat-tile .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--csqa-muted);
+}
+
+.csqa-stat-tile .value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--csqa-heading);
+}
+
+.badge-partial {
+    background: #fff3cd;
+    color: #7a5a00;
+    border: 1px solid #f0d68a;
+    font-weight: 600;
+}
+
+.badge-complete {
+    background: #e3f3e8;
+    color: #1d6b37;
+    border: 1px solid #b5dfc2;
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .csqa-main {
+        padding: 1rem;
+    }
+
+    .csqa-cycle-select {
+        min-width: 0;
+        width: 100%;
+    }
+}

@@ -270,6 +270,13 @@ function csqa_num($value, int $decimals = 2): string
     return number_format((float)$value, $decimals);
 }
 
+/** Format a number with only the decimals it needs (up to 3), ie 4300 -> '4,300', -1.2 -> '-1.2' */
+function csqa_num_compact($value): string
+{
+    $text = number_format((float)$value, 3);
+    return str_contains($text, '.') ? rtrim(rtrim($text, '0'), '.') : $text;
+}
+
 /** URL of a page with query parameters */
 function csqa_url(string $page, array $query): string
 {

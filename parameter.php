@@ -61,8 +61,11 @@ if ($baselines) {
 }
 
 $variant_ids = array_column($param['variants'], 'id');
-$default_variant = in_array($param['default_variant'] ?? '', $variant_ids, true)
-    ? $param['default_variant'] : $variant_ids[0];
+// the configured default variant (a manifest from older processing software has none)
+$default_variant = $param['default_variant'] ?? $variant_ids[0];
+if (!in_array($default_variant, $variant_ids, true)) {
+    $default_variant = $variant_ids[0];
+}
 $variant = csqa_get('v', '/^[a-z0-9]*$/', $default_variant);
 if (!in_array($variant, $variant_ids, true)) {
     $variant = $default_variant;

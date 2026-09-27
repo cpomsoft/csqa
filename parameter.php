@@ -253,7 +253,7 @@ require __DIR__ . '/includes/header.php';
             <div class="btn-group btn-group-sm" role="group" aria-label="Colour scale">
                 <?php foreach ($scales as $sc):
                     $range_text = $sc['range'] ? csqa_num_compact($sc['range'][0]) . ' to ' . csqa_num_compact($sc['range'][1])
-                        . ($param['units'] ? ' ' . $param['units'] : '') : '';
+                        . ($param['units'] ? ' ' . $param['units'] : '') . (!empty($sc['log']) ? ', log' : '') : '';
                 ?>
                     <input type="radio" class="btn-check" name="s" id="s-<?= h($sc['id']) ?>" value="<?= h($sc['id']) ?>"
                            autocomplete="off" <?= $sc['id'] === $scale['id'] ? 'checked' : '' ?> onchange="this.form.submit()">

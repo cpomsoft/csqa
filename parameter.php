@@ -117,15 +117,20 @@ foreach ($baselines as $b) {
     }
 }
 
-$variant_name = '';
-foreach ($param['variants'] as $v) {
-    if ($v['id'] === $variant) {
-        $variant_name = $v['name'];
-        $variable_name = $v['variable'];
-    }
-}
+$current_variant = csqa_find($param['variants'], $variant);
+$variant_name = $current_variant['name'];
+$variable_name = $current_variant['variable'];
+
+// what each variant is in each acquisition mode (ie the retracker used), if configured
+$described_modes = array_values(array_filter($param['modes'], fn($m) => $m !== 'all'));
+$has_mode_descriptions = count($variant_ids) > 1 && $described_modes
+    && array_filter(array_map(fn($v) => $v['mode_descriptions'] ?? [], $param['variants']));
+$mode_described = $has_mode_descriptions && $mode !== '' && $mode !== 'all'
+    && array_key_exists($mode, $current_variant['mode_descriptions'] ?? []);
+$mode_description = $mode_described ? $current_variant['mode_descriptions'][$mode] : null;
+
 $selection_label = $param['long_name']
-    . (count($variant_ids) > 1 ? ": $variant_name" : '')
+    . (count($variant_ids) > 1 ? ": $variant_name" . ($mode_description ? " ($mode_description)" : '') : '')
     . ($mode !== '' ? ', ' . ($mode === 'all' ? $mode_labels['all'] : $mode_labels[$mode] . ' mode') : '');
 
 $page_title = $param['long_name'];
@@ -198,7 +203,8 @@ require __DIR__ . '/includes/header.php';
                     <input type="radio" class="btn-check" name="v" id="v-<?= h($v['id']) ?>" value="<?= h($v['id']) ?>"
                            autocomplete="off" <?= $v['id'] === $variant ? 'checked' : '' ?> onchange="this.form.submit()">
                     <label class="btn btn-outline-csqa" for="v-<?= h($v['id']) ?>"
-                           title="<?= h($v['variable']) ?>"><?= h($v['name']) ?></label>
+                           title="<?= h($v['variable'] . ($has_mode_descriptions
+                               ? ': ' . csqa_variant_mode_summary($v, $described_modes, $mode_labels) : '')) ?>"><?= h($v['name']) ?></label>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -230,6 +236,43 @@ require __DIR__ . '/includes/header.php';
     </div>
     <noscript><button type="submit" class="btn btn-sm btn-primary">Show</button></noscript>
 </form>
+
+<?php if ($has_mode_descriptions): ?>
+<!-- what each variant (ie retracker) is in each acquisition mode ---------------------------- -->
+<div class="table-responsive mt-2">
+<table class="table table-sm table-bordered csqa-table csqa-variant-table w-auto">
+    <caption><?= h($param['variant_label']) ?>s by acquisition mode</caption>
+    <thead>
+    <tr>
+        <th><?= h($param['variant_label']) ?></th>
+        <?php foreach ($described_modes as $m): ?><th><?= h($mode_labels[$m]) ?></th><?php endforeach; ?>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($param['variants'] as $v): $v_selected = $v['id'] === $variant; ?>
+        <tr class="<?= $v_selected ? 'selected' : '' ?>">
+            <td class="text-nowrap">
+                <a href="<?= h(selection_url($selection, ['v' => $v['id']])) ?>"
+                   <?= $v_selected ? 'aria-current="true"' : '' ?>><?= h($v['name']) ?></a>
+                <span class="csqa-muted small"><?= h($v['variable']) ?></span>
+            </td>
+            <?php foreach ($described_modes as $m):
+                $desc = $v['mode_descriptions'][$m] ?? null;
+                $known = array_key_exists($m, $v['mode_descriptions'] ?? []);
+                $current = $v_selected && ($mode === $m || $mode === 'all');
+            ?>
+                <td class="<?= $current ? 'current' : '' ?>">
+                    <?php if ($desc !== null): ?><?= h($desc) ?>
+                    <?php elseif ($known): ?><span class="csqa-muted">N/A (not used)</span>
+                    <?php else: ?><span class="csqa-muted">&ndash;</span><?php endif; ?>
+                </td>
+            <?php endforeach; ?>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+<?php endif; ?>
 
 <?php
 $coverage = csqa_coverage_days($cycle, $param['source']);
@@ -275,8 +318,11 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                     <div class="csqa-no-data">
                         <i class="fa-regular fa-map fa-2x"></i>
                         <div><strong>No map</strong></div>
-                        <div><?= $row === null ? 'Not processed for this selection'
-                            : 'No valid ' . h($variable_name) . ' values in this selection' ?></div>
+                        <div><?php if ($row === null): ?>Not processed for this selection
+                            <?php elseif ($mode_described && $mode_description === null): ?>
+                                <?= h($variant_name) ?> is not used in <?= h($mode_labels[$mode]) ?> mode
+                            <?php else: ?>No valid <?= h($variable_name) ?> values in this selection
+                            <?php endif; ?></div>
                     </div>
                 <?php endif; ?>
             </div>

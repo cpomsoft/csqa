@@ -30,10 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const cycle = Math.floor((t - start) / lengthMs) + 1;
         const cStart = start + (cycle - 1) * lengthMs;
         out.innerHTML = '';
-        const link = document.createElement('a');
-        link.href = '#cycle-' + cycle;
-        link.textContent = 'Cycle ' + cycle;
-        out.append(link, ': ' + fmt(cStart) + ' to ' + fmt(cStart + lengthMs - 1));
+        const dates = ': ' + fmt(cStart) + ' to ' + fmt(cStart + lengthMs - 1);
+        if (document.getElementById('cycle-' + cycle)) {
+            const link = document.createElement('a');
+            link.href = '#cycle-' + cycle;
+            link.textContent = 'Cycle ' + cycle;
+            out.append(link, dates);
+        } else {
+            out.append('Cycle ' + cycle + dates + ' (no data available yet)');
+        }
     };
     form.date.addEventListener('input', update);
     form.addEventListener('submit', (e) => { e.preventDefault(); update(); });
@@ -54,6 +59,7 @@ require __DIR__ . '/includes/header.php';
     their 30 days are marked as partial. Cycles are listed up to the latest that can have data,
     as input products become available about
     <?= $manifest ? h(round(csqa_data_latency_days($manifest))) : 35 ?> days after acquisition.
+    Select a cycle number to show its monitoring results.
 </p>
 
 <?php if (!$manifest): ?>
@@ -98,7 +104,7 @@ require __DIR__ . '/includes/header.php';
     <tr>
         <?php foreach ($baselines as $b): ?>
             <th class="num">Files</th>
-            <th>Coverage (days)</th>
+            <th><?= $cycle_length ?>-day Coverage (days)</th>
         <?php endforeach; ?>
     </tr>
     </thead>
@@ -106,8 +112,27 @@ require __DIR__ . '/includes/header.php';
     <?php for ($cn = $last_cycle; $cn >= 1; $cn--):
         $start = $mission_start + ($cn - 1) * $cycle_length * 86400;
     ?>
+        <?php
+        // link the cycle number to its results: newest default baseline with data, else any
+        $link_baseline = null;
+        foreach ($baselines as $b) {
+            if (isset($by_baseline[$b['id']][$cn]) && ($link_baseline === null || !empty($b['default']))) {
+                $link_baseline = $b['id'];
+                if (!empty($b['default'])) {
+                    break;
+                }
+            }
+        }
+        ?>
         <tr id="cycle-<?= $cn ?>">
-            <td><strong><?= $cn ?></strong></td>
+            <td>
+                <?php if ($link_baseline !== null): ?>
+                    <a href="<?= h(csqa_url('parameter.php', ['p' => $first_param, 'b' => $link_baseline, 'c' => $cn])) ?>"
+                       title="Show the monitoring results of cycle <?= $cn ?> (Baseline-<?= h($link_baseline) ?>)"><strong><?= $cn ?></strong></a>
+                <?php else: ?>
+                    <strong><?= $cn ?></strong>
+                <?php endif; ?>
+            </td>
             <td class="text-nowrap"><?= gmdate('d-M-Y', $start) ?></td>
             <td class="text-nowrap"><?= gmdate('d-M-Y', $start + $cycle_length * 86400 - 1) ?></td>
             <?php foreach ($baselines as $b):
@@ -127,9 +152,8 @@ require __DIR__ . '/includes/header.php';
                                  aria-label="Coverage" aria-valuenow="<?= round($pct) ?>" aria-valuemin="0" aria-valuemax="100">
                                 <div class="progress-bar" style="width: <?= round($pct, 1) ?>%; background: var(--csqa-navy)"></div>
                             </div>
-                            <a class="small text-nowrap"
-                               href="<?= h(csqa_url('parameter.php', ['p' => $first_param, 'b' => $b['id'], 'c' => $cn])) ?>"
-                               title="Show the monitoring results of this cycle"><?= number_format($days, 1) ?></a>
+                            <span class="small text-nowrap"><?= number_format($days, 1) ?>
+                                <span class="csqa-muted">(<?= number_format($pct, 0) ?>%)</span></span>
                         </div>
                     </td>
                 <?php endif; ?>

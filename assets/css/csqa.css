@@ -309,6 +309,25 @@ body {
     background: #eaf1fa;
 }
 
+.csqa-variant-table {
+    font-size: 0.8125rem;
+}
+
+.csqa-variant-table caption {
+    caption-side: top;
+    padding: 0 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--csqa-muted);
+}
+
+.csqa-variant-table tr.selected td.current {
+    background: #cfe0f4;
+    font-weight: 600;
+}
+
 .csqa-swatch {
     display: inline-block;
     width: 0.8rem;

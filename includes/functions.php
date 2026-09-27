@@ -274,7 +274,8 @@ function csqa_num($value, int $decimals = 2): string
 function csqa_num_compact($value): string
 {
     $text = number_format((float)$value, 3);
-    return str_contains($text, '.') ? rtrim(rtrim($text, '0'), '.') : $text;
+    // strpos rather than str_contains: the production server runs PHP 7.4
+    return strpos($text, '.') !== false ? rtrim(rtrim($text, '0'), '.') : $text;
 }
 
 /** URL of a page with query parameters */

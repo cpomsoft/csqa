@@ -30,7 +30,8 @@ Libraries (from CDNs): Bootstrap 5.3, Font Awesome 6, Plotly 2.
 
 ## Requirements
 
-- PHP 8.x (no extensions beyond the defaults)
+- PHP 7.4 or later (the production server runs PHP 7.4, so avoid PHP 8-only functions and
+  syntax such as `str_contains()`, `match` or named arguments)
 - read access for the web server user to the data directory
 
 ## Local development

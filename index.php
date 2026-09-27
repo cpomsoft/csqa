@@ -80,8 +80,10 @@ $manifest = csqa_manifest();
             }
             $param_cycles = csqa_param_cycles($b, $param['id']);
             $latest = end($param_cycles);
-            $file = csqa_plot_filename($param['id'], $param['variants'][0]['id'],
-                $param['modes'][0] ?? '', $param['areas'][0], $param['image_format']);
+            $card_variant = $param['default_variant'] ?? $param['variants'][0]['id'];
+            $card_mode = $param['map_modes'][0] ?? ($param['modes'][0] ?? '');
+            $file = csqa_plot_filename($param['id'], $card_variant, $card_mode, $param['areas'][0],
+                $param['image_format']);
             $thumb = csqa_plot_url($b['id'], (int)$latest['cycle'], $param['id'], $file, false,
                 $latest['processed_at'] ?? '');
             $thumb_caption = $area_names[$param['areas'][0]] . ', Baseline-' . $b['id'] . ', cycle '

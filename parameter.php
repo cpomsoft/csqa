@@ -61,15 +61,21 @@ if ($baselines) {
 }
 
 $variant_ids = array_column($param['variants'], 'id');
-$variant = csqa_get('v', '/^[a-z0-9]*$/', $variant_ids[0]);
+$default_variant = in_array($param['default_variant'] ?? '', $variant_ids, true)
+    ? $param['default_variant'] : $variant_ids[0];
+$variant = csqa_get('v', '/^[a-z0-9]*$/', $default_variant);
 if (!in_array($variant, $variant_ids, true)) {
-    $variant = $variant_ids[0];
+    $variant = $default_variant;
 }
+// bit flag parameters: each variant is a bit of a flag word (values Not set / Set)
+$is_bit_flag = !empty($param['bit_flag']);
 $modes = $param['modes'] ?: [''];
 $mode = csqa_get('m', '/^[a-z]*$/', $modes[0]);
 if (!in_array($mode, $modes, true)) {
     $mode = $modes[0];
 }
+// modes for which maps are produced (statistics are produced for every mode)
+$map_modes = $param['map_modes'] ?? $modes;
 $areas = $param['areas'];
 $area = csqa_get('a', CSQA_ID_RE, 'all');
 if ($area !== 'all' && !in_array($area, $areas, true)) {
@@ -159,8 +165,8 @@ require __DIR__ . '/includes/header.php';
         <h1><?= h($param['long_name']) ?> Monitoring</h1>
         <div class="csqa-muted small mb-2">
             Source: <?= h($manifest['products'][$param['source']] ?? $param['source']) ?>
-            &middot; Variable<?= count($variant_ids) > 1 ? 's' : '' ?>:
-            <?= h(implode(', ', array_column($param['variants'], 'variable'))) ?>
+            <?php $variables = array_values(array_unique(array_column($param['variants'], 'variable'))); ?>
+            &middot; Variable<?= count($variables) > 1 ? 's' : '' ?>: <?= h(implode(', ', $variables)) ?>
         </div>
     </div>
 </div>
@@ -208,7 +214,17 @@ require __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <?php if (count($variant_ids) > 1): ?>
+    <?php if (count($variant_ids) > 6): ?>
+        <div>
+            <label class="form-label" for="sel-variant"><?= h($param['variant_label']) ?></label>
+            <select class="form-select form-select-sm" id="sel-variant" name="v" onchange="this.form.submit()">
+                <?php foreach ($param['variants'] as $v): ?>
+                    <option value="<?= h($v['id']) ?>" <?= $v['id'] === $variant ? 'selected' : '' ?>>
+                        <?= h($v['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    <?php elseif (count($variant_ids) > 1): ?>
         <div>
             <span class="form-label"><?= h($param['variant_label']) ?></span>
             <div class="btn-group btn-group-sm" role="group" aria-label="<?= h($param['variant_label']) ?>">
@@ -352,6 +368,11 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                         <div><?php if ($row === null): ?>Not processed for this selection
                             <?php elseif ($mode_described && $mode_description === null): ?>
                                 <?= h($variant_name) ?> is not used in <?= h($mode_labels[$mode]) ?> mode
+                            <?php elseif (!in_array($mode, $map_modes, true)): ?>
+                                Maps are only produced for
+                                <?= h(implode(', ', array_map(fn($m) => $mode_labels[$m] ?? $m, $map_modes))) ?>
+                            <?php elseif ($is_bit_flag && ($row['n_valid'] ?? 0) > 0 && ($row['counts']['set'] ?? 0) == 0): ?>
+                                <?= h($variant_name) ?>: never set in this selection
                             <?php elseif (($row['n_valid'] ?? 0) > 0): ?>
                                 Map not produced<?= $scale_suffix !== '' ? ' for the ' . h($scale['name']) . ' colour scale' : '' ?>
                             <?php else: ?>No valid <?= h($variable_name) ?> values in this selection
@@ -362,6 +383,49 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
         </div>
     <?php endforeach; ?>
 </div>
+
+<?php if ($is_bit_flag && $cycle_stats):
+    // % of records with each bit set, per mode, in one area
+    $bits_area = $area === 'all' ? $areas[0] : $area;
+    $bits_pct = [];
+    foreach ($cycle_stats['rows'] as $r) {
+        if ($r['area'] === $bits_area) {
+            $bits_pct[$r['variant']][$r['mode']] = $r['pct']['set'] ?? null;
+        }
+    }
+?>
+<!-- every bit of the flag word ------------------------------------------------------------ -->
+<h2><?= h($param['long_name']) ?>: % of Records with each <?= h($param['variant_label']) ?> Set,
+    Cycle <?= (int)$cycle['cycle'] ?>, <?= h($area_names[$bits_area]) ?></h2>
+<div class="table-responsive">
+<table class="table table-sm table-bordered csqa-table align-middle w-auto">
+    <thead>
+    <tr>
+        <th><?= h($param['variant_label']) ?></th>
+        <th>Product flag</th>
+        <?php foreach ($modes as $m): ?><th class="num"><?= h($m === 'all' ? $mode_labels['all'] : $mode_labels[$m]) ?></th><?php endforeach; ?>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($param['variants'] as $v): ?>
+        <tr class="<?= $v['id'] === $variant ? 'selected' : '' ?>">
+            <td class="text-nowrap"><a href="<?= h(selection_url($selection, ['v' => $v['id']])) ?>"
+                <?= $v['id'] === $variant ? 'aria-current="true"' : '' ?>><?= h($v['name']) ?></a></td>
+            <td class="csqa-muted small"><?= h($v['bit_name'] ?? '') ?></td>
+            <?php foreach ($modes as $m): $pct = $bits_pct[$v['id']][$m] ?? null; ?>
+                <td class="num <?= ($pct === null || $pct == 0) ? 'csqa-muted' : '' ?>">
+                    <?= $pct === null ? '&ndash;' : ($pct == 0 ? '0' : csqa_num($pct)) ?></td>
+            <?php endforeach; ?>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+<p class="csqa-muted small mt-1">
+    Percentage of the valid records in each acquisition mode with the bit set. Select a bit to show
+    its maps, statistics and trends<?= $area === 'all' ? ', and an area above to show this table for it' : '' ?>.
+</p>
+<?php endif; ?>
 
 <!-- statistics of the cycle ------------------------------------------------------------- -->
 <h2><?= h($selection_label) ?>: Cycle <?= (int)$cycle['cycle'] ?> Statistics</h2>
@@ -474,8 +538,10 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
     <tbody>
     <?php
     $n_valid_by_cycle = [];
+    $pct_set_by_cycle = [];
     foreach ($trend_data[$baseline['id']] ?? [] as $trow) {
         $n_valid_by_cycle[$trow['cycle']][$trow['area']] = $trow['n_valid'];
+        $pct_set_by_cycle[$trow['cycle']][$trow['area']] = $trow['pct_set'] ?? null;
     }
     foreach (array_reverse($cycles) as $c):
         $cn = (int)$c['cycle'];
@@ -488,7 +554,8 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                     <span class="badge badge-partial">partial</span><?php endif; ?></td>
             <?php foreach ($areas as $a):
                 $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format, $scale_suffix);
-                $has_plot = ($n_valid_by_cycle[$cn][$a] ?? 0) > 0;
+                $has_plot = in_array($mode, $map_modes, true) && ($n_valid_by_cycle[$cn][$a] ?? 0) > 0
+                    && (!$is_bit_flag || ($pct_set_by_cycle[$cn][$a] ?? 0) > 0);
             ?>
                 <td>
                     <?php if ($has_plot): ?>
@@ -498,6 +565,11 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                                  alt="<?= h($area_names[$a]) ?> map, cycle <?= $cn ?>"
                                  onerror="this.parentElement.replaceWith(Object.assign(document.createElement('span'),
                                      {className: 'csqa-thumb-empty', textContent: 'map not available'}))"></a>
+                    <?php elseif (!in_array($mode, $map_modes, true)): ?>
+                        <span class="csqa-thumb-empty">maps for
+                            <?= h(implode(', ', array_map(fn($m) => $mode_labels[$m] ?? $m, $map_modes))) ?> only</span>
+                    <?php elseif ($is_bit_flag && ($n_valid_by_cycle[$cn][$a] ?? 0) > 0): ?>
+                        <span class="csqa-thumb-empty">never set</span>
                     <?php else: ?>
                         <span class="csqa-thumb-empty">no valid data</span>
                     <?php endif; ?>
@@ -529,7 +601,9 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
         'id' => $param['id'],
         'type' => $param['type'],
         'units' => $param['units'],
-        'flags' => $param['flags'],
+        'flags' => $is_bit_flag
+            ? array_values(array_filter($param['flags'], fn($f) => (int)$f['value'] === 1))
+            : $param['flags'],
         'label' => $selection_label,
     ],
     'areas' => array_map(fn($a) => ['id' => $a, 'name' => $area_names[$a]], $areas),

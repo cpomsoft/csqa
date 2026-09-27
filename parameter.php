@@ -76,6 +76,18 @@ if ($area !== 'all' && !in_array($area, $areas, true)) {
     $area = 'all';
 }
 
+// colour scales of the maps (the first is the default), each with its own set of maps
+$scales = $param['colour_scales'] ?? [];
+$scale = $scales[0] ?? null;
+$requested_scale = csqa_get('s', '/^[a-z0-9]+$/');
+foreach ($scales as $sc) {
+    if ($sc['id'] === $requested_scale) {
+        $scale = $sc;
+    }
+}
+$scale_suffix = $scale['file_suffix'] ?? '';
+$scale_label = count($scales) > 1 ? ' (' . $scale['name'] . ' colour scale)' : '';
+
 $selection = [
     'p' => $param['id'],
     'b' => $baseline['id'] ?? null,
@@ -83,6 +95,7 @@ $selection = [
     'v' => count($variant_ids) > 1 ? $variant : null,
     'm' => $mode !== '' ? $mode : null,
     'a' => $area !== 'all' ? $area : null,
+    's' => $scale_suffix !== '' ? $scale['id'] : null,
 ];
 
 /** URL of this page with some selections changed */
@@ -234,6 +247,23 @@ require __DIR__ . '/includes/header.php';
             <?php endforeach; ?>
         </div>
     </div>
+    <?php if (count($scales) > 1): ?>
+        <div>
+            <span class="form-label">Colour scale</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Colour scale">
+                <?php foreach ($scales as $sc):
+                    $range_text = $sc['range'] ? csqa_num($sc['range'][0], 0) . ' to ' . csqa_num($sc['range'][1], 0)
+                        . ($param['units'] ? ' ' . $param['units'] : '') : '';
+                ?>
+                    <input type="radio" class="btn-check" name="s" id="s-<?= h($sc['id']) ?>" value="<?= h($sc['id']) ?>"
+                           autocomplete="off" <?= $sc['id'] === $scale['id'] ? 'checked' : '' ?> onchange="this.form.submit()">
+                    <label class="btn btn-outline-csqa" for="s-<?= h($sc['id']) ?>"
+                           title="<?= h($range_text) ?>"><?= h($sc['name']) ?>
+                        <span class="csqa-scale-range">[<?= h($range_text) ?>]</span></label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
     <noscript><button type="submit" class="btn btn-sm btn-primary">Show</button></noscript>
 </form>
 
@@ -292,14 +322,15 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 </p>
 
 <!-- maps -------------------------------------------------------------------------------- -->
-<h2><?= h($selection_label) ?>: Maps</h2>
+<h2><?= h($selection_label) ?>: Maps<?= h($scale_label) ?></h2>
 <div class="row g-3">
     <?php foreach ($area === 'all' ? $areas : [$area] as $a):
         $row = $stats_rows[$a] ?? null;
-        $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format);
+        $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format, $scale_suffix);
+        $has_map = $row && ($scale_suffix === '' ? !empty($row['plot']) : !empty($row['extra_plots'][$scale['id']]));
         $full_url = csqa_plot_url($baseline['id'], (int)$cycle['cycle'], $param['id'], $file,
             false, $cycle_stats['processed_at'] ?? '');
-        $caption = "$selection_label. " . $area_names[$a] . ', Baseline-' . $baseline['id']
+        $caption = "$selection_label$scale_label. " . $area_names[$a] . ', Baseline-' . $baseline['id']
             . ', cycle ' . $cycle['cycle'];
     ?>
         <div class="<?= $area === 'all' ? 'col-md-6 col-xl-4' : 'col-12 csqa-plot-single' ?>">
@@ -311,7 +342,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                             Single map <i class="fa-solid fa-up-right-and-down-left-from-center"></i></a>
                     <?php endif; ?>
                 </div>
-                <?php if ($row && !empty($row['plot'])): ?>
+                <?php if ($has_map): ?>
                     <img src="<?= h($full_url) ?>" data-caption="<?= h($caption) ?>"
                          class="csqa-zoom" alt="Map of <?= h($caption) ?>" width="1020" height="850">
                 <?php else: ?>
@@ -321,6 +352,8 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                         <div><?php if ($row === null): ?>Not processed for this selection
                             <?php elseif ($mode_described && $mode_description === null): ?>
                                 <?= h($variant_name) ?> is not used in <?= h($mode_labels[$mode]) ?> mode
+                            <?php elseif (($row['n_valid'] ?? 0) > 0): ?>
+                                Map not produced<?= $scale_suffix !== '' ? ' for the ' . h($scale['name']) . ' colour scale' : '' ?>
                             <?php else: ?>No valid <?= h($variable_name) ?> values in this selection
                             <?php endif; ?></div>
                     </div>
@@ -427,7 +460,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <p class="csqa-muted small">Click a point to show that cycle.</p>
 
 <!-- all cycles -------------------------------------------------------------------------- -->
-<h2><?= h($selection_label) ?>: All Cycles from Baseline-<?= h($baseline['id']) ?></h2>
+<h2><?= h($selection_label) ?>: All Cycles from Baseline-<?= h($baseline['id']) ?><?= h($scale_label) ?></h2>
 <div class="table-responsive">
 <table class="table table-sm table-bordered csqa-table align-middle">
     <thead>
@@ -454,7 +487,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                 <?php if (csqa_is_partial($c, $cycle_length, $param['source'])): ?>
                     <span class="badge badge-partial">partial</span><?php endif; ?></td>
             <?php foreach ($areas as $a):
-                $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format);
+                $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format, $scale_suffix);
                 $has_plot = ($n_valid_by_cycle[$cn][$a] ?? 0) > 0;
             ?>
                 <td>
@@ -462,7 +495,9 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                         <a href="<?= h(selection_url($selection, ['c' => $cn, 'a' => $a])) ?>">
                             <img class="csqa-thumb" loading="lazy" width="150" height="125"
                                  src="<?= h(csqa_plot_url($baseline['id'], $cn, $param['id'], $file, true, $c['processed_at'] ?? '')) ?>"
-                                 alt="<?= h($area_names[$a]) ?> map, cycle <?= $cn ?>"></a>
+                                 alt="<?= h($area_names[$a]) ?> map, cycle <?= $cn ?>"
+                                 onerror="this.parentElement.replaceWith(Object.assign(document.createElement('span'),
+                                     {className: 'csqa-thumb-empty', textContent: 'map not available'}))"></a>
                     <?php else: ?>
                         <span class="csqa-thumb-empty">no valid data</span>
                     <?php endif; ?>

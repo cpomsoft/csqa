@@ -229,6 +229,11 @@ body {
     color: var(--csqa-heading);
 }
 
+.csqa-scale-range {
+    font-size: 0.75em;
+    opacity: 0.8;
+}
+
 .csqa-cycle-info {
     margin: 0.75rem 0 0;
     font-size: 0.9rem;

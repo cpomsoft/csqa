@@ -137,7 +137,7 @@ $page_title = $param['long_name'];
 $active_page = $param['id'];
 $breadcrumb = $param['long_name'];
 $extra_head = '<script src="' . h(CSQA_PLOTLY_JS) . '" defer></script>'
-    . '<script src="assets/js/parameter.js?v=6" defer></script>';
+    . '<script src="assets/js/parameter.js?v=7" defer></script>';
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -427,7 +427,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <p class="csqa-muted small">Click a point to show that cycle.</p>
 
 <!-- all cycles -------------------------------------------------------------------------- -->
-<h2><?= h($selection_label) ?>: All Cycles</h2>
+<h2><?= h($selection_label) ?>: All Cycles from Baseline-<?= h($baseline['id']) ?></h2>
 <div class="table-responsive">
 <table class="table table-sm table-bordered csqa-table align-middle">
     <thead>

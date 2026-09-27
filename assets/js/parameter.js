@@ -71,16 +71,43 @@
         return selected.sort((a, b) => (b === data.baseline) - (a === data.baseline));
     }
 
+    // x, y and hover data of a series (rows sorted by cycle), with a null point inserted where
+    // cycles are missing so the line breaks across the gap instead of joining its neighbours
+    function seriesWithGaps(rows, yValue, bid) {
+        const series = {x: [], y: [], customdata: []};
+        rows.forEach((r, i) => {
+            if (i > 0 && r.cycle - rows[i - 1].cycle > 1) {
+                series.x.push(rows[i - 1].cycle + 1);
+                series.y.push(null);
+                series.customdata.push(null);
+            }
+            series.x.push(r.cycle);
+            series.y.push(yValue(r));
+            series.customdata.push([r.cycle, fmtDate(r.start_date), fmtDate(lastDay(r.end_date)), bid]);
+        });
+        return series;
+    }
+
+    // markers for every point when few cycles are shown, otherwise only for points with no
+    // neighbour on either side (a line alone would not show them)
+    function markerStyle(y, color, allPoints) {
+        const isNull = (v) => v === null || v === undefined;
+        const shown = y.map((v, i) => !isNull(v) && (allPoints || (isNull(y[i - 1]) && isNull(y[i + 1]))));
+        return {
+            color: color,
+            size: shown.map((on) => (on ? 8 : 0)),
+            line: {color: '#fff', width: shown.map((on) => (on ? 2 : 0))},
+        };
+    }
+
     function buildTraces(data) {
         const param = data.param;
         const baselines = selectedBaselines(data);
         const multi = baselines.length > 1;
         const traces = [];
-        // markers are only drawn when few enough cycles are shown to keep the lines readable
+        // markers on every point only when few enough cycles are shown to keep lines readable
         const cycles = new Set(baselines.flatMap((bid) => (data.series[bid] || []).map((r) => r.cycle)));
-        const lineMode = cycles.size <= 60 ? 'lines+markers' : 'lines';
-
-        const hoverDates = (rows) => rows.map((r) => [r.cycle, fmtDate(r.start_date), fmtDate(lastDay(r.end_date))]);
+        const allMarkers = cycles.size <= 60;
 
         baselines.forEach((bid, iBaseline) => {
             const rows = data.series[bid] || [];
@@ -91,14 +118,13 @@
                 const area = document.getElementById('trend-area').value;
                 const areaRows = rows.filter((r) => r.area === area);
                 param.flags.forEach((flag) => {
+                    const series = seriesWithGaps(areaRows, (r) => r['pct_' + flag.key], bid);
                     traces.push({
-                        x: areaRows.map((r) => r.cycle),
-                        y: areaRows.map((r) => r['pct_' + flag.key]),
-                        customdata: hoverDates(areaRows).map((d) => d.concat([bid])),
+                        ...series,
                         name: flag.name + suffix,
-                        mode: lineMode,
+                        mode: 'lines+markers',
                         line: {color: flag.color, width: 2, dash: dash},
-                        marker: {color: flag.color, size: 8, line: {color: '#fff', width: 2}},
+                        marker: markerStyle(series.y, flag.color, allMarkers),
                         hovertemplate: `${flag.name}${suffix}: %{y:.2f}%<extra></extra>`,
                     });
                 });
@@ -109,14 +135,13 @@
                     const color = AREA_COLORS[i % AREA_COLORS.length];
                     const unit = stat === 'pct_valid' ? '%' : (stat === 'n_valid' ? '' : ` ${param.units}`);
                     const valueFmt = stat === 'n_valid' ? '%{y:,}' : '%{y:.3f}';
+                    const series = seriesWithGaps(areaRows, (r) => statValue(r, stat), bid);
                     traces.push({
-                        x: areaRows.map((r) => r.cycle),
-                        y: areaRows.map((r) => statValue(r, stat)),
-                        customdata: hoverDates(areaRows).map((d) => d.concat([bid])),
+                        ...series,
                         name: area.name + suffix,
-                        mode: lineMode,
+                        mode: 'lines+markers',
                         line: {color: color, width: 2, dash: dash},
-                        marker: {color: color, size: 8, line: {color: '#fff', width: 2}},
+                        marker: markerStyle(series.y, color, allMarkers),
                         hovertemplate: `${area.name}${suffix}: ${valueFmt}${unit}<extra></extra>`,
                     });
                 });

@@ -10,7 +10,10 @@
     const STAT_LABELS = {
         mean: 'Mean', median: 'Median', std: 'Std Dev', min: 'Min', max: 'Max',
         n_valid: 'Number of valid values', pct_valid: '% valid values',
+        n_cells: 'Number of grid cells with data', n_records: 'Number of measurements gridded',
     };
+    // statistics that are numbers of values (no units, integer format)
+    const COUNT_STATS = ['n_valid', 'n_cells', 'n_records'];
     // line styles used to tell baselines apart when several are shown
     const BASELINE_DASH = ['solid', 'dash', 'dot', 'dashdot'];
 
@@ -133,8 +136,9 @@
                 data.areas.forEach((area, i) => {
                     const areaRows = rows.filter((r) => r.area === area.id && statValue(r, stat) !== null);
                     const color = AREA_COLORS[i % AREA_COLORS.length];
-                    const unit = stat === 'pct_valid' ? '%' : (stat === 'n_valid' ? '' : ` ${param.units}`);
-                    const valueFmt = stat === 'n_valid' ? '%{y:,}' : '%{y:.3f}';
+                    const isCount = COUNT_STATS.includes(stat);
+                    const unit = stat === 'pct_valid' ? '%' : (isCount || !param.units ? '' : ` ${param.units}`);
+                    const valueFmt = isCount ? '%{y:,}' : '%{y:.3f}';
                     const series = seriesWithGaps(areaRows, (r) => statValue(r, stat), bid);
                     traces.push({
                         ...series,
@@ -155,7 +159,7 @@
             return '% of valid values';
         }
         const stat = document.getElementById('trend-stat').value;
-        if (stat === 'n_valid') {
+        if (COUNT_STATS.includes(stat)) {
             return STAT_LABELS[stat];
         }
         if (stat === 'pct_valid') {

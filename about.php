@@ -70,9 +70,16 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
 <p class="csqa-lead">
     Maps show the parameter at each measurement location of the cycle, with histograms of the values
     and a map of the locations of missing values. To keep map production practical, maps of more
-    than 2 million measurements show a regular subsample of the measurements along track (the
+    than 2 million valid measurements show a regular subsample of the measurements along track (the
     fraction plotted is noted on the map); the statistics printed on the maps, and all the
     statistics on this site, use every measurement.
+</p>
+<p class="csqa-lead">
+    Some parameters (ie radar freeboard) also have <strong>gridded maps</strong> of the polar
+    regions: the valid measurements of the cycle are gridded into the cells of a polar
+    stereographic grid (ie 10 km cells, EPSG:3413 in the north and EPSG:3031 in the south), and a
+    statistic of the measurements in each cell (median, mean, maximum, standard deviation or count)
+    is mapped. The statistics of a gridded map are those of its cell values.
 </p>
 
 <h2>Statistics</h2>

@@ -451,3 +451,10 @@ body {
         width: 100%;
     }
 }
+
+/* narrow screens: long selector button groups wrap instead of overflowing the controls */
+@media (max-width: 575.98px) {
+    .csqa-controls .btn-group {
+        flex-wrap: wrap;
+    }
+}

@@ -43,7 +43,7 @@ function csqa_menu_item(string $href, string $label, bool $active, string $icon 
     <link rel="icon" href="assets/images/favicon.ico">
     <link rel="stylesheet" href="<?= h(CSQA_BOOTSTRAP_CSS) ?>">
     <link rel="stylesheet" href="<?= h(CSQA_FONTAWESOME_CSS) ?>">
-    <link rel="stylesheet" href="assets/css/csqa.css?v=4">
+    <link rel="stylesheet" href="assets/css/csqa.css?v=5">
     <?= $extra_head ?? '' ?>
 </head>
 <body>

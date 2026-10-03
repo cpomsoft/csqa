@@ -198,6 +198,7 @@ require __DIR__ . '/includes/header.php';
             Source: <?= h($manifest['products'][$param['source']] ?? $param['source']) ?>
             <?php $variables = array_values(array_unique(array_column($param['variants'], 'variable'))); ?>
             &middot; Variable<?= count($variables) > 1 ? 's' : '' ?>: <?= h(implode(', ', $variables)) ?>
+            <?php if (!empty($param['first_baseline'])): ?>&middot; Baseline-<?= h($param['first_baseline']) ?> onwards<?php endif; ?>
         </div>
     </div>
 </div>
@@ -346,11 +347,23 @@ require __DIR__ . '/includes/header.php';
     <noscript><button type="submit" class="btn btn-sm btn-primary">Show</button></noscript>
 </form>
 
-<?php if (!empty($current_variant['reject_bit'])): $reject = $current_variant['reject_bit']; ?>
+<?php
+// measurements excluded from the statistics and maps
+$exclusions = [];
+if (!empty($current_variant['reject_bit'])) {
+    $reject = $current_variant['reject_bit'];
+    $exclusions[] = (count($variant_ids) > 1 ? $variant_name . ': measurements' : 'Measurements')
+        . ' with the ' . ($reject['name'] !== '' ? $reject['name'] : 'bit ' . $reject['mask'])
+        . ' bit (mask ' . (int)$reject['mask'] . ') of ' . $reject['variable'] . ' set are excluded.';
+}
+if (!empty($param['valid_modes'])) {
+    $exclusions[] = 'Only ' . implode(' and ', array_map(fn($m) => $mode_labels[$m] ?? $m, $param['valid_modes']))
+        . ' mode measurements are used.';
+}
+?>
+<?php if ($exclusions): ?>
 <p class="csqa-muted small mt-2 mb-0">
-    <i class="fa-solid fa-filter"></i> <?= h($variant_name) ?>: measurements with the
-    <?= h($reject['name'] !== '' ? $reject['name'] : 'bit ' . $reject['mask']) ?> bit (mask
-    <?= (int)$reject['mask'] ?>) of <?= h($reject['variable']) ?> set are excluded.
+    <i class="fa-solid fa-filter"></i> <?= h(implode(' ', $exclusions)) ?>
 </p>
 <?php endif; ?>
 

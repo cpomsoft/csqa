@@ -178,6 +178,10 @@ foreach ($baselines as $b) {
 $current_variant = csqa_find($param['variants'], $variant);
 $variant_name = $current_variant['name'];
 $variable_name = $current_variant['variable'];
+// a variant's own units (ie the beam behaviour parameters)
+if (!$is_grid && isset($current_variant['units'])) {
+    $units = $current_variant['units'];
+}
 
 // what each variant is in each acquisition mode (ie the retracker used), if configured
 $described_modes = array_values(array_filter($param['modes'], fn($m) => $m !== 'all'));
@@ -393,9 +397,15 @@ if (!empty($current_variant['reject_bit'])) {
         . ' with the ' . ($reject['name'] !== '' ? $reject['name'] : 'bit ' . $reject['mask'])
         . ' bit (mask ' . (int)$reject['mask'] . ') of ' . $reject['variable'] . ' set are excluded.';
 }
-if (!empty($param['valid_modes'])) {
-    $exclusions[] = 'Only ' . implode(' and ', array_map(fn($m) => $mode_labels[$m] ?? $m, $param['valid_modes']))
+// the variant's valid modes (manifests of older processing software only have the parameter's)
+$valid_modes = $current_variant['valid_modes'] ?? ($param['valid_modes'] ?? []);
+if ($valid_modes) {
+    $exclusions[] = 'Only ' . implode(' and ', array_map(fn($m) => $mode_labels[$m] ?? $m, $valid_modes))
         . ' mode measurements are used.';
+}
+if (!empty($current_variant['invalid_values'])) {
+    $exclusions[] = 'Product values of ' . implode(', ', array_map('csqa_num_compact', $current_variant['invalid_values']))
+        . ' (not computed or not applied) are excluded.';
 }
 ?>
 <?php if ($exclusions): ?>

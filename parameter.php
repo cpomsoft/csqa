@@ -31,6 +31,7 @@ if (!$param) {
 
 $area_names = csqa_area_names($manifest);
 $mode_labels = csqa_mode_labels($manifest);
+$mode_surfaces = csqa_mode_surfaces($manifest);
 $cycle_length = (int)$manifest['cycle_length_days'];
 $image_format = $param['image_format'] ?? $manifest['image_format'];
 $is_flag = $param['type'] === 'flag';
@@ -90,7 +91,7 @@ $is_grid = $grid_stat !== null;
 
 $modes = $param['modes'] ?: [''];
 $view_modes = $is_grid ? $grid['modes'] : $modes;
-$mode = csqa_get('m', '/^[a-z]*$/', $view_modes[0]);
+$mode = csqa_get('m', '/^[a-z_]*$/', $view_modes[0]);
 if (!in_array($mode, $view_modes, true)) {
     $mode = $view_modes[0];
 }
@@ -158,7 +159,7 @@ $timeseries_id = $is_grid ? $param['id'] . '_grid' : $param['id'];
 $trend_data = [];
 foreach ($baselines as $b) {
     $rows = array_values(array_filter(
-        csqa_timeseries($b['id'], $timeseries_id),
+        csqa_timeseries($b['id'], $timeseries_id, $variant),
         fn($row) => $row['variant'] === $variant && $row['mode'] === $mode
             && (!$is_grid || $row['statistic'] === $grid_stat['id'])
     ));
@@ -181,13 +182,13 @@ $mode_description = $mode_described ? $current_variant['mode_descriptions'][$mod
 
 $selection_label = $param['long_name']
     . (count($variant_ids) > 1 ? ": $variant_name" . ($mode_description ? " ($mode_description)" : '') : '')
-    . ($mode !== '' ? ', ' . ($mode === 'all' ? $mode_labels['all'] : $mode_labels[$mode] . ' mode') : '');
+    . ($mode !== '' ? ', ' . csqa_mode_text($mode, $mode_labels, $mode_surfaces) : '');
 
 $page_title = $param['long_name'];
 $active_page = $param['id'];
 $breadcrumb = $param['long_name'];
 $extra_head = '<script src="' . h(CSQA_PLOTLY_JS) . '" defer></script>'
-    . '<script src="assets/js/parameter.js?v=8" defer></script>';
+    . '<script src="assets/js/parameter.js?v=9" defer></script>';
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -286,20 +287,31 @@ require __DIR__ . '/includes/header.php';
         </div>
     <?php endif; ?>
 
-    <?php if ($param['modes']): ?>
+    <?php
+    // acquisition modes, and selections of a mode over surface types (ie LRM over ice)
+    $mode_groups = [
+        'Acquisition mode' => array_values(array_filter($param['modes'], fn($m) => !isset($mode_surfaces[$m]))),
+        'Mode and surface type' => array_values(array_filter($param['modes'], fn($m) => isset($mode_surfaces[$m]))),
+    ];
+    foreach ($mode_groups as $group_label => $group_modes):
+        if (!$group_modes) {
+            continue;
+        }
+    ?>
         <div>
-            <span class="form-label">Acquisition mode</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Acquisition mode">
-                <?php foreach ($param['modes'] as $m): $m_off = !in_array($m, $view_modes, true); ?>
+            <span class="form-label"><?= h($group_label) ?></span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="<?= h($group_label) ?>">
+                <?php foreach ($group_modes as $m): $m_off = !in_array($m, $view_modes, true); ?>
                     <input type="radio" class="btn-check" name="m" id="m-<?= h($m) ?>" value="<?= h($m) ?>"
                            autocomplete="off" <?= $m === $mode ? 'checked' : '' ?> <?= $m_off ? 'disabled' : '' ?>
                            onchange="this.form.submit()">
                     <label class="btn btn-outline-csqa" for="m-<?= h($m) ?>"
-                           <?= $m_off ? 'title="Not gridded: select Along-track maps"' : '' ?>><?= h($m === 'all' ? 'All' : $mode_labels[$m]) ?></label>
+                           <?= $m_off ? 'title="Not gridded: select Along-track maps"'
+                               : (isset($mode_surfaces[$m]) ? 'title="' . h($mode_labels[$mode_surfaces[$m]['mode']] . ' mode measurements over the ' . implode(' / ', $mode_surfaces[$m]['surfaces']) . ' surface type (surface type mask)') . '"' : '') ?>><?= h($m === 'all' ? 'All' : $mode_labels[$m]) ?></label>
                 <?php endforeach; ?>
             </div>
         </div>
-    <?php endif; ?>
+    <?php endforeach; ?>
 
     <div>
         <span class="form-label">Area</span>
@@ -474,6 +486,8 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <?php if ($is_bit_flag && $cycle_stats):
     // % of records with each bit set, per mode, in one area
     $bits_area = $area === 'all' ? $areas[0] : $area;
+    // columns: the acquisition modes, then the mode surface selections
+    $bits_modes = array_merge(...array_values($mode_groups));
     $bits_pct = [];
     foreach ($cycle_stats['rows'] as $r) {
         if ($r['area'] === $bits_area) {
@@ -487,10 +501,21 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <div class="table-responsive">
 <table class="table table-sm table-bordered csqa-table align-middle w-auto">
     <thead>
+    <?php if ($mode_groups['Mode and surface type']): ?>
+    <tr>
+        <th rowspan="2"><?= h($param['variant_label']) ?></th>
+        <th rowspan="2">Product flag</th>
+        <?php foreach ($mode_groups as $group_label => $group_modes): if ($group_modes): ?>
+            <th colspan="<?= count($group_modes) ?>" class="text-center"><?= h($group_label) ?></th>
+        <?php endif; endforeach; ?>
+    </tr>
+    <tr>
+    <?php else: ?>
     <tr>
         <th><?= h($param['variant_label']) ?></th>
         <th>Product flag</th>
-        <?php foreach ($modes as $m): ?><th class="num"><?= h($m === 'all' ? $mode_labels['all'] : $mode_labels[$m]) ?></th><?php endforeach; ?>
+    <?php endif; ?>
+        <?php foreach ($bits_modes as $m): ?><th class="num"><?= h($m === 'all' ? $mode_labels['all'] : $mode_labels[$m]) ?></th><?php endforeach; ?>
     </tr>
     </thead>
     <tbody>
@@ -499,7 +524,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
             <td class="text-nowrap"><a href="<?= h(selection_url($selection, ['v' => $v['id']])) ?>"
                 <?= $v['id'] === $variant ? 'aria-current="true"' : '' ?>><?= h($v['name']) ?></a></td>
             <td class="csqa-muted small"><?= h($v['bit_name'] ?? '') ?></td>
-            <?php foreach ($modes as $m): $pct = $bits_pct[$v['id']][$m] ?? null; ?>
+            <?php foreach ($bits_modes as $m): $pct = $bits_pct[$v['id']][$m] ?? null; ?>
                 <td class="num <?= ($pct === null || $pct == 0) ? 'csqa-muted' : '' ?>">
                     <?= $pct === null ? '&ndash;' : ($pct == 0 ? '0' : csqa_num($pct)) ?></td>
             <?php endforeach; ?>
@@ -509,8 +534,8 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 </table>
 </div>
 <p class="csqa-muted small mt-1">
-    Percentage of the valid records in each acquisition mode with the bit set. Select a bit to show
-    its maps, statistics and trends<?= $area === 'all' ? ', and an area above to show this table for it' : '' ?>.
+    Percentage of the valid records in each acquisition mode<?= $mode_groups['Mode and surface type'] ? ', and in each mode over a surface type (from the surface type mask, surf_type_20_ku),' : '' ?>
+    with the bit set. Select a bit to show its maps, statistics and trends<?= $area === 'all' ? ', and an area above to show this table for it' : '' ?>.
 </p>
 <?php endif; ?>
 
@@ -538,6 +563,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
             <th class="num">Mean<?= $u ?></th>
             <th class="num">Median<?= $u ?></th>
             <th class="num">Std Dev<?= $u ?></th>
+            <th class="num" title="Root mean square">RMS<?= $u ?></th>
             <th class="num">Min<?= $u ?></th>
             <th class="num">Max<?= $u ?></th>
         <?php endif; ?>
@@ -548,7 +574,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
         <tr class="<?= $a === $area ? 'selected' : '' ?>">
             <td><?= h($area_names[$a]) ?></td>
             <?php if (!$row): ?>
-                <td colspan="<?= $is_flag ? count($param['flags']) + 3 : 7 ?>" class="csqa-muted">not processed</td>
+                <td colspan="<?= $is_flag ? count($param['flags']) + 3 : 8 ?>" class="csqa-muted">not processed</td>
             <?php else: ?>
                 <?php if ($is_grid): ?>
                     <td class="num"><?= number_format($row['n_records']) ?></td>
@@ -566,7 +592,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                     <?php endforeach; ?>
                     <td class="num"><?= number_format($row['n_other'] ?? 0) ?></td>
                 <?php else: ?>
-                    <?php foreach (['mean', 'median', 'std', 'min', 'max'] as $stat): ?>
+                    <?php foreach (['mean', 'median', 'std', 'rms', 'min', 'max'] as $stat): ?>
                         <td class="num"><?= csqa_num($row[$stat] ?? null) ?></td>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -578,13 +604,13 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 </div>
 <p class="csqa-muted small mt-1">
     <?php if ($is_grid): ?>
-        The valid 20 Hz measurements of the cycle within each area<?= $mode !== '' && $mode !== 'all' ? ' acquired in ' . h($mode_labels[$mode]) . ' mode' : '' ?>
+        The valid 20 Hz measurements of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces)) ?>
         are gridded into the cells of a <?= h($grid['label']) ?> (polar stereographic). The statistics
         are of the <?= h(lcfirst($grid_stat['name'])) ?> of the measurements in each cell with data<?= ($grid['min_count'] ?? 1) > 1 ? ' (cells with at least ' . (int)$grid['min_count'] . ' measurements)' : '' ?>,
-        ie of the values of the map. Std Dev is the population standard deviation.
+        ie of the values of the map. Std Dev is the population standard deviation, RMS the root mean square.
     <?php else: ?>
-        Statistics use every 20 Hz measurement of the cycle within each area<?= $mode !== '' && $mode !== 'all' ? ' acquired in ' . h($mode_labels[$mode]) . ' mode' : '' ?>.
-        <?= $is_flag ? 'Flag percentages are of the valid (non-fill) values.' : 'Std Dev is the population standard deviation.' ?>
+        Statistics use every 20 Hz measurement of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces)) ?>.
+        <?= $is_flag ? 'Flag percentages are of the valid (non-fill) values.' : 'Std Dev is the population standard deviation, RMS the root mean square.' ?>
     <?php endif; ?>
 </p>
 
@@ -604,6 +630,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                 <option value="mean">Mean</option>
                 <option value="median">Median</option>
                 <option value="std">Std Dev</option>
+                <option value="rms">RMS</option>
                 <option value="min">Min</option>
                 <option value="max">Max</option>
                 <?php if ($is_grid): ?>

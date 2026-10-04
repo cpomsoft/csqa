@@ -89,6 +89,40 @@ function csqa_mode_labels(array $manifest): array
     return $labels;
 }
 
+/** id => manifest entry of the mode surface selections (ie LRM over ice) */
+function csqa_mode_surfaces(array $manifest): array
+{
+    $selections = [];
+    foreach ($manifest['modes'] as $mode) {
+        if (!empty($mode['surfaces'])) {
+            $selections[$mode['id']] = $mode;
+        }
+    }
+    return $selections;
+}
+
+/** A mode selection as text, ie 'All modes', 'SAR mode', 'LRM Ice' */
+function csqa_mode_text(string $mode, array $mode_labels, array $mode_surfaces): string
+{
+    $label = $mode_labels[$mode] ?? $mode;
+    return ($mode === 'all' || isset($mode_surfaces[$mode])) ? $label : "$label mode";
+}
+
+/** The records of a mode selection, ie ' acquired in SAR mode' or ' acquired in LRM mode over
+ * the ice surface type' ('' for all modes) */
+function csqa_mode_records_text(string $mode, array $mode_labels, array $mode_surfaces): string
+{
+    if ($mode === '' || $mode === 'all') {
+        return '';
+    }
+    if (isset($mode_surfaces[$mode])) {
+        $sel = $mode_surfaces[$mode];
+        return ' acquired in ' . ($mode_labels[$sel['mode']] ?? $sel['mode']) . ' mode over the '
+            . implode(' / ', $sel['surfaces']) . ' surface type';
+    }
+    return ' acquired in ' . ($mode_labels[$mode] ?? $mode) . ' mode';
+}
+
 /** Days after acquisition before input products are available */
 function csqa_data_latency_days(array $manifest): float
 {
@@ -157,16 +191,26 @@ function csqa_timeseries_path(string $baseline, string $param_id): string
 /**
  * Statistics timeseries of a parameter, as a list of rows (column => value).
  * Numeric columns are converted to numbers, empty values to null.
+ * If a variant is given only lines containing it are parsed (the quality flag timeseries has a
+ * row per cycle, area, flag bit and mode), so callers must still check each row's variant.
  */
-function csqa_timeseries(string $baseline, string $param_id): array
+function csqa_timeseries(string $baseline, string $param_id, string $variant = ''): array
 {
     $path = csqa_timeseries_path($baseline, $param_id);
     if (!is_readable($path) || ($fh = fopen($path, 'r')) === false) {
         return [];
     }
     $columns = fgetcsv($fh, null, ',', '"', '');
+    if (!$columns) {
+        fclose($fh);
+        return [];
+    }
     $rows = [];
-    while (($values = fgetcsv($fh, null, ',', '"', '')) !== false) {
+    while (($line = fgets($fh)) !== false) {
+        if ($variant !== '' && strpos($line, ",$variant,") === false) {
+            continue;
+        }
+        $values = str_getcsv(rtrim($line, "\r\n"), ',', '"', '');
         if (count($values) !== count($columns)) {
             continue;
         }

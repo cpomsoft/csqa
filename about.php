@@ -87,7 +87,10 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
     <li><strong>Flag parameters</strong> (ie acquisition mode, surface type): the percentage of
         each flag value, calculated from the valid (non-fill) values in the area.</li>
     <li><strong>Physical parameters</strong> (ie backscatter): the mean, median, standard deviation
-        (population), minimum and maximum of the valid values in the area.</li>
+        (population), root mean square (RMS), minimum and maximum of the valid values in the area.</li>
+    <li><strong>Quality flags</strong>: the percentage of records with each bit set, per acquisition
+        mode and per mode over a surface type of the surface type mask (LRM over ice, land and
+        ocean, SARin over ice and land, SAR over ocean), as in the CryoSat-2 quality reports.</li>
     <li>For every selection the number of measurements (<em>Records</em>) and the number of valid
         values (<em>Valid</em>) are also given.</li>
 </ul>

@@ -8,7 +8,7 @@
     const INK = '#52514e';
     const GRID = '#e4e6ea';
     const STAT_LABELS = {
-        mean: 'Mean', median: 'Median', std: 'Std Dev', min: 'Min', max: 'Max',
+        mean: 'Mean', median: 'Median', std: 'Std Dev', rms: 'RMS', min: 'Min', max: 'Max',
         n_valid: 'Number of valid values', pct_valid: '% valid values',
         n_cells: 'Number of grid cells with data', n_records: 'Number of measurements gridded',
     };

@@ -32,6 +32,13 @@ if (!$param) {
 $area_names = csqa_area_names($manifest);
 $mode_labels = csqa_mode_labels($manifest);
 $mode_surfaces = csqa_mode_surfaces($manifest);
+$mode_kinds = csqa_mode_kinds($manifest);
+// a parameter selecting passes (not acquisition modes): 'all' is all passes
+$param_mode_kinds = array_unique(array_map(fn($m) => $mode_kinds[$m] ?? 'mode',
+    array_values(array_filter($param['modes'], fn($m) => $m !== 'all'))));
+if ($param_mode_kinds === ['pass']) {
+    $mode_labels['all'] = 'All passes';
+}
 $cycle_length = (int)$manifest['cycle_length_days'];
 $image_format = $param['image_format'] ?? $manifest['image_format'];
 $is_flag = $param['type'] === 'flag';
@@ -182,7 +189,7 @@ $mode_description = $mode_described ? $current_variant['mode_descriptions'][$mod
 
 $selection_label = $param['long_name']
     . (count($variant_ids) > 1 ? ": $variant_name" . ($mode_description ? " ($mode_description)" : '') : '')
-    . ($mode !== '' ? ', ' . csqa_mode_text($mode, $mode_labels, $mode_surfaces) : '');
+    . ($mode !== '' ? ', ' . csqa_mode_text($mode, $mode_labels, $mode_kinds) : '');
 
 $page_title = $param['long_name'];
 $active_page = $param['id'];
@@ -197,7 +204,14 @@ require __DIR__ . '/includes/header.php';
         <h1><?= h($param['long_name']) ?> Monitoring</h1>
         <div class="csqa-muted small mb-2">
             Source: <?= h($manifest['products'][$param['source']] ?? $param['source']) ?>
-            <?php $variables = array_values(array_unique(array_column($param['variants'], 'variable'))); ?>
+            <?php
+            // product variables (the inputs of derived variants, ie the mispointing angle)
+            $variables = [];
+            foreach ($param['variants'] as $v) {
+                $variables = array_merge($variables, !empty($v['inputs']) ? $v['inputs'] : [$v['variable']]);
+            }
+            $variables = array_values(array_unique($variables));
+            ?>
             &middot; Variable<?= count($variables) > 1 ? 's' : '' ?>: <?= h(implode(', ', $variables)) ?>
             <?php if (!empty($param['first_baseline'])): ?>&middot; Baseline-<?= h($param['first_baseline']) ?> onwards<?php endif; ?>
         </div>
@@ -288,11 +302,22 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <?php
-    // acquisition modes, and selections of a mode over surface types (ie LRM over ice)
-    $mode_groups = [
-        'Acquisition mode' => array_values(array_filter($param['modes'], fn($m) => !isset($mode_surfaces[$m]))),
-        'Mode and surface type' => array_values(array_filter($param['modes'], fn($m) => isset($mode_surfaces[$m]))),
-    ];
+    // acquisition modes, selections of a mode over surface types (ie LRM over ice) and of
+    // ascending / descending passes. 'All' joins the first group with selections
+    $group_labels = ['mode' => 'Acquisition mode', 'mode_surface' => 'Mode and surface type', 'pass' => 'Passes'];
+    $mode_groups = array_fill_keys(array_values($group_labels), []);
+    foreach ($param['modes'] as $m) {
+        $mode_groups[$group_labels[$mode_kinds[$m] ?? 'mode'] ?? 'Acquisition mode'][] = $m;
+    }
+    if ($mode_groups['Acquisition mode'] === ['all']) {
+        foreach ($mode_groups as $group_label => $group_modes) {
+            if ($group_modes && $group_label !== 'Acquisition mode') {
+                array_unshift($mode_groups[$group_label], 'all');
+                $mode_groups['Acquisition mode'] = [];
+                break;
+            }
+        }
+    }
     foreach ($mode_groups as $group_label => $group_modes):
         if (!$group_modes) {
             continue;
@@ -604,12 +629,12 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 </div>
 <p class="csqa-muted small mt-1">
     <?php if ($is_grid): ?>
-        The valid 20 Hz measurements of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces)) ?>
+        The valid <?= h(csqa_measurement_rate($param)) ?> measurements of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>
         are gridded into the cells of a <?= h($grid['label']) ?> (polar stereographic). The statistics
         are of the <?= h(lcfirst($grid_stat['name'])) ?> of the measurements in each cell with data<?= ($grid['min_count'] ?? 1) > 1 ? ' (cells with at least ' . (int)$grid['min_count'] . ' measurements)' : '' ?>,
         ie of the values of the map. Std Dev is the population standard deviation, RMS the root mean square.
     <?php else: ?>
-        Statistics use every 20 Hz measurement of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces)) ?>.
+        Statistics use every <?= h(csqa_measurement_rate($param)) ?> measurement of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>.
         <?= $is_flag ? 'Flag percentages are of the valid (non-fill) values.' : 'Std Dev is the population standard deviation, RMS the root mean square.' ?>
     <?php endif; ?>
 </p>

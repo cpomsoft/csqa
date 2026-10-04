@@ -101,19 +101,48 @@ function csqa_mode_surfaces(array $manifest): array
     return $selections;
 }
 
-/** A mode selection as text, ie 'All modes', 'SAR mode', 'LRM Ice' */
-function csqa_mode_text(string $mode, array $mode_labels, array $mode_surfaces): string
+/** id => kind of the manifest's mode selections: 'mode' (and 'all'), 'mode_surface' or 'pass' */
+function csqa_mode_kinds(array $manifest): array
 {
-    $label = $mode_labels[$mode] ?? $mode;
-    return ($mode === 'all' || isset($mode_surfaces[$mode])) ? $label : "$label mode";
+    $kinds = [];
+    foreach ($manifest['modes'] as $mode) {
+        // manifests of older processing software have no kind
+        $kinds[$mode['id']] = $mode['kind'] ?? (!empty($mode['surfaces']) ? 'mode_surface' : 'mode');
+    }
+    return $kinds;
 }
 
-/** The records of a mode selection, ie ' acquired in SAR mode' or ' acquired in LRM mode over
- * the ice surface type' ('' for all modes) */
-function csqa_mode_records_text(string $mode, array $mode_labels, array $mode_surfaces): string
+/** Measurement rate of a parameter's product variables, from their names: '1 Hz' (ie *_01),
+ * '20 Hz' (ie *_20_ku) or '' if mixed or unknown */
+function csqa_measurement_rate(array $param): string
+{
+    $rates = [];
+    foreach ($param['variants'] as $v) {
+        foreach (!empty($v['inputs']) ? $v['inputs'] : [$v['variable']] as $name) {
+            $rates[] = preg_match('/_01(_|$)/', $name) ? '1 Hz' : (strpos($name, '_20_') !== false ? '20 Hz' : '');
+        }
+    }
+    $rates = array_unique($rates);
+    return count($rates) === 1 ? $rates[0] : '';
+}
+
+/** A mode selection as text, ie 'All modes', 'SAR mode', 'LRM Ice', 'Ascending passes' */
+function csqa_mode_text(string $mode, array $mode_labels, array $mode_kinds): string
+{
+    $label = $mode_labels[$mode] ?? $mode;
+    return ($mode === 'all' || ($mode_kinds[$mode] ?? 'mode') !== 'mode') ? $label : "$label mode";
+}
+
+/** The records of a mode selection, ie ' acquired in SAR mode', ' acquired in LRM mode over
+ * the ice surface type' or ' from ascending passes' ('' for all modes) */
+function csqa_mode_records_text(string $mode, array $mode_labels, array $mode_surfaces,
+                                array $mode_kinds = []): string
 {
     if ($mode === '' || $mode === 'all') {
         return '';
+    }
+    if (($mode_kinds[$mode] ?? '') === 'pass') {
+        return ' from ' . strtolower($mode_labels[$mode] ?? $mode);
     }
     if (isset($mode_surfaces[$mode])) {
         $sel = $mode_surfaces[$mode];

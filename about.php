@@ -88,6 +88,10 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
         each flag value, calculated from the valid (non-fill) values in the area.</li>
     <li><strong>Physical parameters</strong> (ie backscatter): the mean, median, standard deviation
         (population), root mean square (RMS), minimum and maximum of the valid values in the area.</li>
+    <li><strong>Crossovers</strong>: single cycle crossover height differences (ascending minus
+        descending) over the Antarctic and Greenland ice sheets, per acquisition mode and
+        retracker. The number of crossovers, and statistics of the differences within 10 m, with
+        maps of the mean difference within 20 km of each 10 km grid cell.</li>
     <li><strong>Quality flags</strong>: the percentage of records with each bit set, per acquisition
         mode and per mode over a surface type of the surface type mask (LRM over ice, land and
         ocean, SARin over ice and land, SAR over ocean), as in the CryoSat-2 quality reports.</li>

@@ -69,16 +69,6 @@ if ($baselines) {
     $cycle = $cycles[$cycle_index];
 }
 
-$variant_ids = array_column($param['variants'], 'id');
-// the configured default variant (a manifest from older processing software has none)
-$default_variant = $param['default_variant'] ?? $variant_ids[0];
-if (!in_array($default_variant, $variant_ids, true)) {
-    $default_variant = $variant_ids[0];
-}
-$variant = csqa_get('v', '/^[a-z0-9]*$/', $default_variant);
-if (!in_array($variant, $variant_ids, true)) {
-    $variant = $default_variant;
-}
 // bit flag parameters: each variant is a bit of a flag word (values Not set / Set)
 $is_bit_flag = !empty($param['bit_flag']);
 
@@ -94,13 +84,45 @@ if ($grid) {
         }
     }
 }
+// a parameter without along-track maps (ie crossovers) only shows its gridded maps
+$has_track_maps = !array_key_exists('map_modes', $param) || !empty($param['map_modes']);
+if ($grid && !$has_track_maps && $grid_stat === null) {
+    $grid_stat = $grid['statistics'][0];
+}
 $is_grid = $grid_stat !== null;
+// statistics and trends of the grid cells: when the gridded maps of a parameter that also has
+// along-track maps are selected. A parameter with only gridded maps (ie crossovers) shows the
+// statistics of its values (ie of the crossovers)
+$grid_stats = $is_grid && $has_track_maps;
+// what each value is (ie crossover), for the statistics labels and notes
+$record_name = !empty($param['record_name']) ? $param['record_name'] : 'measurement';
+$record_rate = !empty($param['record_name']) ? '' : csqa_measurement_rate($param);
 
 $modes = $param['modes'] ?: [''];
 $view_modes = $is_grid ? $grid['modes'] : $modes;
 $mode = csqa_get('m', '/^[a-z_]*$/', $view_modes[0]);
 if (!in_array($mode, $view_modes, true)) {
     $mode = $view_modes[0];
+}
+
+$variant_ids = array_column($param['variants'], 'id');
+// the configured default variant, of the selected mode if configured per mode (ie the OCOG
+// retracker in LRM mode). A manifest from older processing software has none
+$default_variant = $param['mode_default_variants'][$mode] ?? ($param['default_variant'] ?? $variant_ids[0]);
+if (!in_array($default_variant, $variant_ids, true)) {
+    $default_variant = $variant_ids[0];
+}
+$variant = csqa_get('v', '/^[a-z0-9]*$/', $default_variant);
+if (!in_array($variant, $variant_ids, true)) {
+    $variant = $default_variant;
+}
+// a variant not used in the selected mode (ie retracker 3 in SARin mode, after changing mode)
+// is replaced by the mode's default variant
+$requested_variant = csqa_find($param['variants'], $variant);
+if (!empty($requested_variant['valid_modes']) && in_array($mode, $param['modes'], true)
+    && $mode !== 'all' && !in_array($mode, $requested_variant['valid_modes'], true)
+    && isset($param['mode_default_variants'][$mode])) {
+    $variant = $param['mode_default_variants'][$mode];
 }
 // modes for which maps are produced (statistics are produced for every mode)
 $map_modes = $is_grid ? $grid['modes'] : ($param['map_modes'] ?? $modes);
@@ -123,7 +145,7 @@ $scale_suffix = $scale['file_suffix'] ?? '';
 $scale_label = count($scales) > 1 ? ' (' . $scale['name'] . ' colour scale)' : '';
 // map file name suffix of the selected view, and units of the values mapped
 $map_suffix = $is_grid ? $grid_stat['file_suffix'] : $scale_suffix;
-$units = $is_grid ? $grid_stat['units'] : $param['units'];
+$units = $grid_stats ? $grid_stat['units'] : $param['units'];
 if ($is_grid) {
     $scale_label = ' (' . $grid['label'] . ', ' . lcfirst($grid_stat['name']) . ')';
 }
@@ -147,28 +169,39 @@ function selection_url(array $selection, array $changes): string
 
 // ---- statistics of the selected cycle ------------------------------------------------------
 
-$stats_rows = [];
+$stats_rows = [];  // statistics of the selection per area
+$map_rows = [];  // statistics rows of the maps shown (of the grid statistic in the grid view)
 $cycle_stats = null;
 if ($cycle) {
     $cycle_stats = csqa_cycle_stats($baseline['id'], (int)$cycle['cycle'], $param['id']);
-    foreach (($is_grid ? ($cycle_stats['grid_rows'] ?? []) : ($cycle_stats['rows'] ?? [])) as $row) {
-        if ($row['variant'] === $variant && $row['mode'] === $mode
-            && (!$is_grid || $row['statistic'] === $grid_stat['id'])) {
+    foreach ($cycle_stats['rows'] ?? [] as $row) {
+        if ($row['variant'] === $variant && $row['mode'] === $mode) {
             $stats_rows[$row['area']] = $row;
         }
+    }
+    foreach ($cycle_stats['grid_rows'] ?? [] as $row) {
+        if ($is_grid && $row['variant'] === $variant && $row['mode'] === $mode
+            && $row['statistic'] === $grid_stat['id']) {
+            $map_rows[$row['area']] = $row;
+        }
+    }
+    if ($grid_stats) {
+        $stats_rows = $map_rows;
+    } elseif (!$is_grid) {
+        $map_rows = $stats_rows;
     }
 }
 
 // ---- statistics timeseries of every baseline for the trend chart ---------------------------
 
 // gridded statistics are in the timeseries <param>_grid
-$timeseries_id = $is_grid ? $param['id'] . '_grid' : $param['id'];
+$timeseries_id = $grid_stats ? $param['id'] . '_grid' : $param['id'];
 $trend_data = [];
 foreach ($baselines as $b) {
     $rows = array_values(array_filter(
         csqa_timeseries($b['id'], $timeseries_id, $variant),
         fn($row) => $row['variant'] === $variant && $row['mode'] === $mode
-            && (!$is_grid || $row['statistic'] === $grid_stat['id'])
+            && (!$grid_stats || $row['statistic'] === $grid_stat['id'])
     ));
     if ($rows) {
         $trend_data[$b['id']] = $rows;
@@ -179,7 +212,7 @@ $current_variant = csqa_find($param['variants'], $variant);
 $variant_name = $current_variant['name'];
 $variable_name = $current_variant['variable'];
 // a variant's own units (ie the beam behaviour parameters)
-if (!$is_grid && isset($current_variant['units'])) {
+if (!$grid_stats && isset($current_variant['units'])) {
     $units = $current_variant['units'];
 }
 
@@ -266,7 +299,7 @@ require __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <?php if ($grid): ?>
+    <?php if ($grid && $has_track_maps): ?>
         <div>
             <span class="form-label">Maps</span>
             <div class="btn-group btn-group-sm" role="group" aria-label="Map type">
@@ -403,6 +436,11 @@ if ($valid_modes) {
     $exclusions[] = 'Only ' . implode(' and ', array_map(fn($m) => $mode_labels[$m] ?? $m, $valid_modes))
         . ' mode measurements are used.';
 }
+if (!empty($param['crossover'])) {
+    $exclusions[] = 'Crossover differences larger than '
+        . csqa_num_compact($param['crossover']['max_abs_difference']) . ' ' . $param['units']
+        . ' are outliers: counted, but not valid.';
+}
 if (!empty($current_variant['invalid_values'])) {
     $exclusions[] = 'Product values of ' . implode(', ', array_map('csqa_num_compact', $current_variant['invalid_values']))
         . ' (not computed or not applied) are excluded.';
@@ -472,7 +510,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <h2><?= h($selection_label) ?>: Maps<?= h($scale_label) ?></h2>
 <div class="row g-3">
     <?php foreach ($area === 'all' ? $areas : [$area] as $a):
-        $row = $stats_rows[$a] ?? null;
+        $row = $map_rows[$a] ?? null;
         $file = csqa_plot_filename($param['id'], $variant, $mode, $a, $image_format, $map_suffix);
         $has_map = $row && (($is_grid || $scale_suffix === '') ? !empty($row['plot'])
             : !empty($row['extra_plots'][$scale['id']]));
@@ -575,18 +613,18 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 <?php endif; ?>
 
 <!-- statistics of the cycle ------------------------------------------------------------- -->
-<h2><?= h($selection_label) ?>: Cycle <?= (int)$cycle['cycle'] ?> Statistics<?= h($is_grid ? $scale_label : '') ?></h2>
+<h2><?= h($selection_label) ?>: Cycle <?= (int)$cycle['cycle'] ?> Statistics<?= h($grid_stats ? $scale_label : '') ?></h2>
 <div class="table-responsive">
 <table class="table table-sm table-bordered csqa-table align-middle">
     <thead>
     <tr>
         <th>Area</th>
-        <?php if ($is_grid): ?>
+        <?php if ($grid_stats): ?>
             <th class="num" title="Valid measurements gridded">Measurements</th>
             <th class="num" title="Grid cells with data">Grid cells</th>
         <?php else: ?>
-            <th class="num">Records</th>
-            <th class="num">Valid</th>
+            <th class="num"><?= h(ucfirst($record_name === 'measurement' ? 'records' : $record_name . 's')) ?></th>
+            <th class="num" <?= !empty($param['crossover']) ? 'title="Crossovers with |dh| &le; ' . h(csqa_num_compact($param['crossover']['max_abs_difference'])) . ' ' . h($param['units']) . '"' : '' ?>>Valid</th>
         <?php endif; ?>
         <?php if ($is_flag): ?>
             <?php foreach ($param['flags'] as $flag): ?>
@@ -611,7 +649,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
             <?php if (!$row): ?>
                 <td colspan="<?= $is_flag ? count($param['flags']) + 3 : 8 ?>" class="csqa-muted">not processed</td>
             <?php else: ?>
-                <?php if ($is_grid): ?>
+                <?php if ($grid_stats): ?>
                     <td class="num"><?= number_format($row['n_records']) ?></td>
                     <td class="num"><?= number_format($row['n_cells']) ?></td>
                 <?php else: ?>
@@ -638,19 +676,20 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
 </table>
 </div>
 <p class="csqa-muted small mt-1">
-    <?php if ($is_grid): ?>
-        The valid <?= h(csqa_measurement_rate($param)) ?> measurements of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>
+    <?php if ($grid_stats): ?>
+        The valid <?= h($record_rate) ?> <?= h($record_name) ?>s of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>
         are gridded into the cells of a <?= h($grid['label']) ?> (polar stereographic). The statistics
-        are of the <?= h(lcfirst($grid_stat['name'])) ?> of the measurements in each cell with data<?= ($grid['min_count'] ?? 1) > 1 ? ' (cells with at least ' . (int)$grid['min_count'] . ' measurements)' : '' ?>,
+        are of the <?= h(lcfirst($grid_stat['name'])) ?> of the <?= h($record_name) ?>s <?= h($grid['cell_text'] ?? 'in each cell') ?>
+        with data<?= ($grid['min_count'] ?? 1) > 1 ? ' (cells with at least ' . (int)$grid['min_count'] . ' ' . h($record_name) . 's)' : '' ?>,
         ie of the values of the map. Std Dev is the population standard deviation, RMS the root mean square.
     <?php else: ?>
-        Statistics use every <?= h(csqa_measurement_rate($param)) ?> measurement of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>.
+        Statistics use every <?= h($record_rate) ?> <?= h($record_name) ?> of the cycle within each area<?= h(csqa_mode_records_text($mode, $mode_labels, $mode_surfaces, $mode_kinds)) ?>.
         <?= $is_flag ? 'Flag percentages are of the valid (non-fill) values.' : 'Std Dev is the population standard deviation, RMS the root mean square.' ?>
     <?php endif; ?>
 </p>
 
 <!-- statistics trends ------------------------------------------------------------------- -->
-<h2><?= h($selection_label) ?>: Trends<?= h($is_grid ? $scale_label : '') ?></h2>
+<h2><?= h($selection_label) ?>: Trends<?= h($grid_stats ? $scale_label : '') ?></h2>
 <div class="csqa-trend-controls" id="csqa-trend-controls">
     <?php if ($is_flag): ?>
         <label>Area
@@ -668,7 +707,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
                 <option value="rms">RMS</option>
                 <option value="min">Min</option>
                 <option value="max">Max</option>
-                <?php if ($is_grid): ?>
+                <?php if ($grid_stats): ?>
                     <option value="n_cells">Number of grid cells with data</option>
                     <option value="n_records">Number of measurements gridded</option>
                 <?php else: ?>
@@ -688,7 +727,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
         <?php endforeach; ?>
     <?php endif; ?>
     <a class="ms-auto small" href="<?= h(csqa_url('download.php', ['b' => $baseline['id'], 'p' => $timeseries_id])) ?>">
-        <i class="fa-solid fa-download"></i> Baseline-<?= h($baseline['id']) ?> <?= $is_grid ? 'gridded ' : '' ?>statistics (CSV)</a>
+        <i class="fa-solid fa-download"></i> Baseline-<?= h($baseline['id']) ?> <?= $grid_stats ? 'gridded ' : '' ?>statistics (CSV)</a>
 </div>
 <div id="csqa-trend" class="csqa-trend" role="img"
      aria-label="Statistics of <?= h($selection_label) ?> per cycle"></div>
@@ -712,7 +751,7 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
     $pct_set_by_cycle = [];
     foreach ($trend_data[$baseline['id']] ?? [] as $trow) {
         // gridded statistics: the number of grid cells with data
-        $n_valid_by_cycle[$trow['cycle']][$trow['area']] = $is_grid ? $trow['n_cells'] : $trow['n_valid'];
+        $n_valid_by_cycle[$trow['cycle']][$trow['area']] = $grid_stats ? $trow['n_cells'] : $trow['n_valid'];
         $pct_set_by_cycle[$trow['cycle']][$trow['area']] = $trow['pct_set'] ?? null;
     }
     foreach (array_reverse($cycles) as $c):
@@ -776,8 +815,8 @@ $n_files = $cycle['products'][$param['source']]['n_files'] ?? null;
         'flags' => $is_bit_flag
             ? array_values(array_filter($param['flags'], fn($f) => (int)$f['value'] === 1))
             : $param['flags'],
-        'label' => $selection_label . ($is_grid ? $scale_label : ''),
-        'grid' => $is_grid,
+        'label' => $selection_label . ($grid_stats ? $scale_label : ''),
+        'grid' => $grid_stats,
     ],
     'areas' => array_map(fn($a) => ['id' => $a, 'name' => $area_names[$a]], $areas),
     'baseline' => $baseline['id'],

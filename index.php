@@ -82,11 +82,19 @@ $manifest = csqa_manifest();
             $latest = end($param_cycles);
             $card_variant = $param['default_variant'] ?? $param['variants'][0]['id'];
             $card_mode = $param['map_modes'][0] ?? ($param['modes'][0] ?? '');
-            $file = csqa_plot_filename($param['id'], $card_variant, $card_mode, $param['areas'][0],
-                $param['image_format']);
+            $card_area = $param['areas'][0];
+            $card_suffix = '';
+            if (array_key_exists('map_modes', $param) && !$param['map_modes'] && !empty($param['grid'])) {
+                // only gridded maps (ie crossovers): the first grid statistic's map
+                $card_mode = $param['grid']['modes'][0];
+                $card_area = $param['grid']['areas'][0];
+                $card_suffix = $param['grid']['statistics'][0]['file_suffix'];
+            }
+            $file = csqa_plot_filename($param['id'], $card_variant, $card_mode, $card_area,
+                $param['image_format'], $card_suffix);
             $thumb = csqa_plot_url($b['id'], (int)$latest['cycle'], $param['id'], $file, false,
                 $latest['processed_at'] ?? '');
-            $thumb_caption = $area_names[$param['areas'][0]] . ', Baseline-' . $b['id'] . ', cycle '
+            $thumb_caption = $area_names[$card_area] . ', Baseline-' . $b['id'] . ', cycle '
                 . $latest['cycle'];
         }
     ?>

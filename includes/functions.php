@@ -48,6 +48,37 @@ function csqa_read_json(string $path): ?array
     return is_array($data) ? $data : null;
 }
 
+/** Titles of the parameters of each input product (portal menu and overview) */
+const CSQA_SOURCE_TITLES = ['GDR-A' => 'L2 Parameters', 'L2I' => 'L2i Parameters'];
+
+/**
+ * The manifest's parameters by input product and theme, in manifest order:
+ * [source => ['title' => ..., 'groups' => [['label' => theme label or '', 'params' => [...]]]]].
+ * Manifests of older processing software have no themes (a single unlabelled group)
+ */
+function csqa_parameter_sections(array $manifest): array
+{
+    $group_labels = [];
+    foreach ($manifest['parameter_groups'] ?? [] as $group) {
+        $group_labels[$group['id']] = $group['label'];
+    }
+    $sections = [];
+    foreach ($manifest['parameters'] as $param) {
+        $source = $param['source'];
+        if (!isset($sections[$source])) {
+            $sections[$source] = ['title' => CSQA_SOURCE_TITLES[$source] ?? $source, 'groups' => []];
+        }
+        $label = $group_labels[$param['group'] ?? ''] ?? '';
+        $groups = &$sections[$source]['groups'];
+        if (!$groups || end($groups)['label'] !== $label) {
+            $groups[] = ['label' => $label, 'params' => []];
+        }
+        $groups[count($groups) - 1]['params'][] = $param;
+        unset($groups);
+    }
+    return $sections;
+}
+
 /** Availability of the most recent input products (null if not produced yet) */
 function csqa_availability(): ?array
 {

@@ -466,3 +466,20 @@ body {
     background: #ffffff;
     min-height: 320px;
 }
+
+/* themes of the parameters in the menu and the overview */
+.csqa-menu-subheader {
+    margin: 0.6rem 1rem 0.15rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--csqa-muted);
+}
+
+.csqa-subheading {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--csqa-muted);
+    margin: 1.25rem 0 0.6rem;
+}

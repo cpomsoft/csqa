@@ -16,14 +16,8 @@ $page_title = $page_title ?? CSQA_SITE_TITLE;
 $active_page = $active_page ?? '';
 $breadcrumb = $breadcrumb ?? '';
 
-// menu: parameters grouped by source product
-$menu_groups = [];
-if ($manifest) {
-    foreach ($manifest['parameters'] as $menu_param) {
-        $menu_groups[$menu_param['source']][] = $menu_param;
-    }
-}
-$menu_group_titles = ['GDR-A' => 'L2 Parameters', 'L2I' => 'L2i Parameters'];
+// menu: parameters by source product and theme
+$menu_sections = $manifest ? csqa_parameter_sections($manifest) : [];
 
 function csqa_menu_item(string $href, string $label, bool $active, string $icon = 'fa-circle-chevron-right'): void
 {
@@ -43,7 +37,7 @@ function csqa_menu_item(string $href, string $label, bool $active, string $icon 
     <link rel="icon" href="assets/images/favicon.ico">
     <link rel="stylesheet" href="<?= h(CSQA_BOOTSTRAP_CSS) ?>">
     <link rel="stylesheet" href="<?= h(CSQA_FONTAWESOME_CSS) ?>">
-    <link rel="stylesheet" href="assets/css/csqa.css?v=6">
+    <link rel="stylesheet" href="assets/css/csqa.css?v=7">
     <?= $extra_head ?? '' ?>
 </head>
 <body>
@@ -79,12 +73,17 @@ function csqa_menu_item(string $href, string $label, bool $active, string $icon 
                 csqa_menu_item('cycles.php', 'Data Takes (Cycles)', $active_page === 'cycles', 'fa-calendar-days');
                 csqa_menu_item('availability.php', 'Data Availability', $active_page === 'availability', 'fa-satellite-dish');
                 ?>
-                <?php foreach ($menu_groups as $source => $menu_params): ?>
-                    <div class="csqa-menu-header"><?= h($menu_group_titles[$source] ?? $source) ?></div>
-                    <?php foreach ($menu_params as $menu_param) {
-                        csqa_menu_item(csqa_url('parameter.php', ['p' => $menu_param['id']]),
-                            $menu_param['long_name'], $active_page === $menu_param['id']);
-                    } ?>
+                <?php foreach ($menu_sections as $menu_section): ?>
+                    <div class="csqa-menu-header"><?= h($menu_section['title']) ?></div>
+                    <?php foreach ($menu_section['groups'] as $menu_group): ?>
+                        <?php if ($menu_group['label'] !== ''): ?>
+                            <div class="csqa-menu-subheader"><?= h($menu_group['label']) ?></div>
+                        <?php endif; ?>
+                        <?php foreach ($menu_group['params'] as $menu_param) {
+                            csqa_menu_item(csqa_url('parameter.php', ['p' => $menu_param['id']]),
+                                $menu_param['long_name'], $active_page === $menu_param['id']);
+                        } ?>
+                    <?php endforeach; ?>
                 <?php endforeach; ?>
                 <div class="csqa-menu-header">Further Info</div>
                 <?php

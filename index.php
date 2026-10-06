@@ -88,8 +88,10 @@ $manifest = csqa_manifest();
 <?php endif; ?>
 
 <h2>Monitored Parameters</h2>
+<?php foreach (csqa_parameter_sections($manifest) as $section): foreach ($section['groups'] as $group): ?>
+<h3 class="csqa-subheading"><?= h($section['title']) ?><?= $group['label'] !== '' ? ': ' . h($group['label']) : '' ?></h3>
 <div class="row g-3">
-    <?php foreach ($manifest['parameters'] as $param):
+    <?php foreach ($group['params'] as $param):
         $baselines = csqa_param_baselines($manifest, $param['id']);
         $thumb = null;
         if ($baselines) {
@@ -134,6 +136,7 @@ $manifest = csqa_manifest();
         </div>
     <?php endforeach; ?>
 </div>
+<?php endforeach; endforeach; ?>
 
 <h2>About the Monitoring</h2>
 <ul class="csqa-lead">

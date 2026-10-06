@@ -48,6 +48,18 @@ function csqa_read_json(string $path): ?array
     return is_array($data) ? $data : null;
 }
 
+/** Availability of the most recent input products (null if not produced yet) */
+function csqa_availability(): ?array
+{
+    return csqa_read_json(CSQA_DATA_DIR . '/availability.json');
+}
+
+/** Whole days from an ISO time to now, ie the age of the latest data */
+function csqa_days_ago(string $iso): int
+{
+    return (int)floor((time() - strtotime($iso)) / 86400);
+}
+
 /** The portal manifest (null if the processing tools have not produced one yet) */
 function csqa_manifest(): ?array
 {

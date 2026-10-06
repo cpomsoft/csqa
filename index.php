@@ -65,6 +65,28 @@ $manifest = csqa_manifest();
     <?php endforeach; ?>
 </div>
 
+<?php $availability = csqa_availability(); ?>
+<?php if ($availability): ?>
+<h2>Latest Input Data</h2>
+<div class="row g-3">
+    <?php foreach ($availability['products'] as $prod):
+        if (!$prod['latest']) {
+            continue;
+        }
+        $age = csqa_days_ago($prod['latest']['stop']);
+    ?>
+        <div class="col-sm-6 col-xl-4">
+            <a class="csqa-stat-tile d-block text-decoration-none" href="availability.php#<?= h(strtolower($prod['id'])) ?>">
+                <div class="label">Latest <?= h($prod['id']) ?> data</div>
+                <div class="value"><?= h(csqa_date($prod['latest']['stop'])) ?></div>
+                <div class="small">+<?= $age ?> day<?= $age === 1 ? '' : 's' ?> old &middot; view availability
+                    <i class="fa-solid fa-chevron-right small"></i></div>
+            </a>
+        </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <h2>Monitored Parameters</h2>
 <div class="row g-3">
     <?php foreach ($manifest['parameters'] as $param):

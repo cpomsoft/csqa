@@ -33,6 +33,10 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
     version 001). Results of each baseline are produced and shown separately. When the same granule
     is available more than once for a baseline, the highest version is used.
 </p>
+<p class="csqa-lead">
+    The <a href="availability.php">Data Availability</a> page shows the number of files of each
+    product per acquisition day over the most recent 30 days of data, and the latest data received.
+</p>
 
 <h2>Data Takes (Cycles)</h2>
 <p class="csqa-lead">
@@ -90,7 +94,7 @@ $area_names = $manifest ? csqa_area_names($manifest) : [];
         (population), root mean square (RMS), minimum and maximum of the valid values in the area.</li>
     <li><strong>Crossovers</strong>: single cycle crossover height differences (ascending minus
         descending) over the Antarctic and Greenland ice sheets, per acquisition mode and
-        retracker. The number of crossovers, and statistics of the differences within 10 m, with
+        retracker. The number of crossovers, and statistics of the differences within 5 m (one crossover per pair of passes), with
         maps of the mean difference within 20 km of each 10 km grid cell.</li>
     <li><strong>Quality flags</strong>: the percentage of records with each bit set, per acquisition
         mode and per mode over a surface type of the surface type mask (LRM over ice, land and

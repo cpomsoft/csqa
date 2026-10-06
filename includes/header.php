@@ -4,7 +4,7 @@
  *
  * Set before including:
  *   $page_title  (string) title of the page
- *   $active_page (string) 'home', 'cycles', 'about' or a parameter id
+ *   $active_page (string) 'home', 'cycles', 'availability', 'about' or a parameter id
  *   $breadcrumb  (string) breadcrumb label of the page (empty for home)
  *   $extra_head  (string, optional) extra html for <head> (ie scripts)
  */
@@ -43,7 +43,7 @@ function csqa_menu_item(string $href, string $label, bool $active, string $icon 
     <link rel="icon" href="assets/images/favicon.ico">
     <link rel="stylesheet" href="<?= h(CSQA_BOOTSTRAP_CSS) ?>">
     <link rel="stylesheet" href="<?= h(CSQA_FONTAWESOME_CSS) ?>">
-    <link rel="stylesheet" href="assets/css/csqa.css?v=5">
+    <link rel="stylesheet" href="assets/css/csqa.css?v=6">
     <?= $extra_head ?? '' ?>
 </head>
 <body>
@@ -77,6 +77,7 @@ function csqa_menu_item(string $href, string $label, bool $active, string $icon 
                 <?php
                 csqa_menu_item('index.php', 'Overview', $active_page === 'home', 'fa-house');
                 csqa_menu_item('cycles.php', 'Data Takes (Cycles)', $active_page === 'cycles', 'fa-calendar-days');
+                csqa_menu_item('availability.php', 'Data Availability', $active_page === 'availability', 'fa-satellite-dish');
                 ?>
                 <?php foreach ($menu_groups as $source => $menu_params): ?>
                     <div class="csqa-menu-header"><?= h($menu_group_titles[$source] ?? $source) ?></div>

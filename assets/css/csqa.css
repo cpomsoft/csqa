@@ -458,3 +458,11 @@ body {
         flex-wrap: wrap;
     }
 }
+
+/* data availability charts */
+.csqa-avail-chart {
+    border: 1px solid var(--csqa-border);
+    border-radius: 0.5rem;
+    background: #ffffff;
+    min-height: 320px;
+}
